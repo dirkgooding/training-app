@@ -125,13 +125,12 @@ with tab_plan:
             
             st.session_state.my_plan[d_key] = upd_data
             
-            c_s, c_d = st.columns(2)
-            if c_s.button("Tag umbenennen", key=f"save_{d_key}"):
-                if new_name != d_key:
-                    st.session_state.my_plan.pop(d_key)
-                    st.session_state.my_plan[new_name] = upd_data
-                    st.rerun()
-            if c_d.button("Tag löschen", key=f"del_{d_key}"):
+            # Automatische Speicherung der Namensänderung
+            if new_name != d_key and new_name.strip() != "":
+                st.session_state.my_plan[new_name] = st.session_state.my_plan.pop(d_key)
+                st.rerun()
+
+            if st.button("Tag löschen", key=f"del_{d_key}"):
                 if len(st.session_state.my_plan) > 1:
                     st.session_state.my_plan.pop(d_key)
                     st.rerun()
