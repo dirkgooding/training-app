@@ -15,23 +15,19 @@ if 'my_plan' not in st.session_state:
 if 'device_settings' not in st.session_state:
     st.session_state.device_settings = {}
 
+if 'cycle_weeks' not in st.session_state:
+    st.session_state.cycle_weeks = 12
+
 st.title("🏋️ Trainings-Steuerung")
 
 col_nav1, col_nav2 = st.columns(2)
 
 with col_nav1:
-    woche = st.selectbox(
-        "📅 Wähle die Woche:", 
-        options=[f"Woche {i}" for i in range(1, 13)],
-        index=0
-    )
+    wochen_options = [f"Woche {i}" for i in range(1, st.session_state.cycle_weeks + 1)]
+    woche = st.selectbox("📅 Wähle die Woche:", options=wochen_options, index=0)
 
 with col_nav2:
-    selected_day = st.selectbox(
-        "📋 Welchen Tag heute?", 
-        options=list(st.session_state.my_plan.keys()),
-        index=0
-    )
+    selected_day = st.selectbox("📋 Welchen Tag heute?", options=list(st.session_state.my_plan.keys()), index=0)
 
 st.markdown(f"## {selected_day} <small>({woche})</small>", unsafe_allow_html=True)
 st.divider()
@@ -54,9 +50,7 @@ for i, ex in enumerate(current_exercises):
     col_n1, col_n2 = st.columns(2)
     with col_n1:
         old_val = st.session_state.device_settings.get(ex, "")
-        st.session_state.device_settings[ex] = st.text_input(
-            f"⚙️ Einstellung (fest)", value=old_val, key=f"dev_{ex}"
-        )
+        st.session_state.device_settings[ex] = st.text_input(f"⚙️ Einstellung (fest)", value=old_val, key=f"dev_{ex}")
     with col_n2:
         st.text_input(f"📝 Notiz {woche}", key=f"note_{ex}_{woche}")
 
@@ -70,21 +64,3 @@ for i, ex in enumerate(current_exercises):
         s_cols[2].number_input("r", value=10, step=1, key=f"r_{ex}_{s}_{woche}", label_visibility="collapsed")
         s_cols[3].number_input("rir", value=2, step=1, key=f"rir_{ex}_{s}_{woche}", label_visibility="collapsed")
         s_cols[4].selectbox("p", options=[0, 1, 2], key=f"p_{ex}_{s}_{woche}", label_visibility="collapsed", format_func=lambda x: f"Schmerz: {x}")
-    
-    st.divider()
-
-if st.button("✅ Trainingstag abschließen", use_container_width=True):
-    st.balloons()
-    st.success(f"Daten für {selected_day} ({woche}) gesichert!")
-
-# ==========================================
-# MODUL 2: PLANER-FUNKTION (Optionales Modul)
-# ==========================================
-st.markdown("---")
-with st.expander("⚙️ Planer-Einstellungen (Modul)"):
-    st.write("Hier kannst du Übungen für die Tage definieren.")
-    for day in list(st.session_state.my_plan.keys()):
-        new_day_name = st.text_input(f"Name für {day}", value=day, key=f"plan_name_{day}")
-        if new_day_name != day:
-            st.session_state.my_plan[new_day_name] = st.session_state.my_plan.pop(day)
-            st.rerun()
