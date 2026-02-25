@@ -3,7 +3,6 @@ import streamlit as st
 st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 
 # --- 1. DATENSTRUKTUR INITIALISIEREN ---
-# Jeder Tag ist eine Liste aus Dictionaries: [{"name": "Übung", "sets": 3}, ...]
 if 'my_plan' not in st.session_state:
     st.session_state.my_plan = {
         "Tag A": [
@@ -59,5 +58,54 @@ with tab_train:
         for s in range(1, sets + 1):
             s_cols = st.columns([1, 2, 2, 2, 3])
             s_cols[0].write(f"**{s}**")
+            # FIX: Alle Klammern korrekt geschlossen
             s_cols[1].number_input("kg", value=20.0, step=1.25, key=f"w_{name}_{s}_{woche}_{selected_day}", label_visibility="collapsed")
-            s_cols[2].number_input("r", value=10, step=1,
+            s_cols[2].number_input("r", value=10, step=1, key=f"r_{name}_{s}_{woche}_{selected_day}", label_visibility="collapsed")
+            s_cols[3].number_input("rir", value=2, step=1, key=f"rir_{name}_{s}_{woche}_{selected_day}", label_visibility="collapsed")
+            s_cols[4].selectbox("p", [0, 1, 2], key=f"p_{name}_{s}_{woche}_{selected_day}", label_visibility="collapsed")
+        st.divider()
+
+# --- TAB 2: PLANER ---
+with tab_plan:
+    st.header("Konfiguration")
+    
+    # Zyklus-Dauer
+    new_cycle = st.number_input("Zyklus-Dauer (Wochen):", min_value=1, max_value=52, value=st.session_state.cycle_weeks)
+    # FIX: Doppelpunkt hinzugefügt
+    if new_cycle != st.session_state.cycle_weeks:
+        st.session_state.cycle_weeks = new_cycle
+        st.rerun()
+    
+    st.divider()
+
+    # Tage verwalten
+    for day_key in list(st.session_state.my_plan.keys()):
+        with st.expander(f"Bearbeite: {day_key}", expanded=True):
+            new_day_name = st.text_input("Name des Tages:", value=day_key, key=f"rename_{day_key}")
+            
+            # Übungen als Text einlesen
+            current_ex_list = st.session_state.my_plan[day_key]
+            ex_names_only = "\n".join([ex["name"] for ex in current_ex_list])
+            # FIX: String-Literal sauber beendet
+            new_ex_names = st.text_area("Übungen (eine pro Zeile):", value=ex_names_only, key=f"ex_edit_{day_key}")
+            
+            # Namen in Liste umwandeln
+            temp_names = [n.strip() for n in new_ex_names.split("\n") if n.strip()]
+            
+            # Sätze für jede Übung einzeln abfragen
+            updated_data = []
+            st.write("**Sätze festlegen:**")
+            for n in temp_names:
+                default_s = 3
+                for old_ex in current_ex_list:
+                    if old_ex["name"] == n:
+                        default_s = old_ex["sets"]
+                
+                s_val = st.number_input(f"Sätze für {n}:", min_value=1, max_value=15, value=default_s, key=f"s_edit_{day_key}_{n}")
+                updated_data.append({"name": n, "sets": s_val})
+            
+            # Speichern / Löschen
+            c_save, c_del = st.columns(2)
+            with c_save:
+                if st.button(f"Speichern", key=f"save_btn_{day_key}"):
+                    if new_day_name != day_
