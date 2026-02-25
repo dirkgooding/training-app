@@ -14,16 +14,22 @@ if 'my_plan' not in st.session_state:
 if 'device_settings' not in st.session_state:
     st.session_state.device_settings = {}
 
-# --- TABS FÜR DIE TRENNUNG ---
+# Neu: Einstellung für die Anzahl der Wochen (Standard: 12)
+if 'cycle_weeks' not in st.session_state:
+    st.session_state.cycle_weeks = 12
+
+# --- TABS ---
 tab_train, tab_plan = st.tabs(["🏋️ Training", "⚙️ Planer"])
 
-# --- TAB 1: DAS TRAINING (Deine Basis) ---
+# --- TAB 1: DAS TRAINING ---
 with tab_train:
     st.title("🏋️ Trainings-Steuerung")
 
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
-        woche = st.selectbox("📅 Wähle die Woche:", options=[f"Woche {i}" for i in range(1, 13)], index=0)
+        # Die Wochen-Optionen passen sich jetzt dynamisch an den Planer an
+        wochen_options = [f"Woche {i}" for i in range(1, st.session_state.cycle_weeks + 1)]
+        woche = st.selectbox("📅 Wähle die Woche:", options=wochen_options, index=0)
     with col_nav2:
         selected_day = st.selectbox("📋 Welchen Tag heute?", options=list(st.session_state.my_plan.keys()), index=0)
 
@@ -58,41 +64,4 @@ with tab_train:
         for s in range(1, 4):
             s_cols = st.columns([1, 2, 2, 2, 3])
             s_cols[0].write(f"**{s}**")
-            s_cols[1].number_input("kg", value=20.0, step=1.25, key=f"w_{ex}_{s}_{woche}", label_visibility="collapsed")
-            s_cols[2].number_input("r", value=10, step=1, key=f"r_{ex}_{s}_{woche}", label_visibility="collapsed")
-            s_cols[3].number_input("rir", value=2, step=1, key=f"rir_{ex}_{s}_{woche}", label_visibility="collapsed")
-            s_cols[4].selectbox("p", options=[0, 1, 2], key=f"p_{ex}_{s}_{woche}", label_visibility="collapsed", format_func=lambda x: f"Schmerz: {x}")
-        st.divider()
-
-    if st.button("✅ Trainingstag abschließen", use_container_width=True):
-        st.balloons()
-        st.success(f"Daten für {selected_day} ({woche}) gesichert!")
-
-# --- TAB 2: DER PLANER (Neu ausgelagert) ---
-with tab_plan:
-    st.header("⚙️ Trainingsplan-Konfiguration")
-    st.write("Hier kannst du deine Tage umbenennen und die Übungen anpassen.")
-    
-    # Bearbeitung der bestehenden Tage
-    for day_name in list(st.session_state.my_plan.keys()):
-        with st.expander(f"Bearbeite: {day_name}"):
-            # Name ändern
-            new_name = st.text_input("Name des Tages", value=day_name, key=f"edit_name_{day_name}")
-            
-            # Übungen ändern
-            current_exs = st.session_state.my_plan[day_name]
-            new_exs_text = st.text_area("Übungen (eine pro Zeile)", value="\n".join(current_exs), key=f"edit_exs_{day_name}")
-            
-            if st.button("Speichern", key=f"save_{day_name}"):
-                # Update Plan
-                updated_exs = [e.strip() for e in new_exs_text.split("\n") if e.strip()]
-                # Falls Name geändert wurde: Alten Eintrag löschen, neuen hinzufügen
-                if new_name != day_name:
-                    del st.session_state.my_plan[day_name]
-                st.session_state.my_plan[new_name] = updated_exs
-                st.rerun()
-    
-    st.divider()
-    if st.button("➕ Neuen Tag hinzufügen"):
-        st.session_state.my_plan["Neuer Tag"] = ["Übung 1"]
-        st.rerun()
+            s_cols[1].number_input("kg", value=20.0, step=1.25
