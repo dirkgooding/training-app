@@ -6,7 +6,7 @@ st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 
 # --- INITIALISIERUNG ---
 if 'cycle_weeks' not in st.session_state: st.session_state.cycle_weeks = 4
-if 'my_plan' not in st.session_state: st.session_state.my_plan = {"Tag A": [{"name": "Kniebeugen", "sets": [3] * st.session_state.cycle_weeks, "reps": [10] * st.session_state.cycle_weeks}, {"name": "Bankdrücken", "sets": [3] * st.session_state.cycle_weeks, "reps": [10] * st.session_state.cycle_weeks}]}
+if 'my_plan' not in st.session_state: st.session_state.my_plan = {"Tag 1": [{"name": "Test 1", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10]}, {"name": "Test 2", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10]}], "Tag 2": [{"name": "Test 3", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10]}, {"name": "Test 4", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10]}]}
 if 'training_logs' not in st.session_state: st.session_state.training_logs = {}
 if 'device_settings' not in st.session_state: st.session_state.device_settings = {}
 
