@@ -7,7 +7,21 @@ st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 
 # --- INITIALISIERUNG ---
 if 'cycle_weeks' not in st.session_state: st.session_state.cycle_weeks = 4
-if 'my_plan' not in st.session_state: st.session_state.my_plan = {"Tag 1": [{"name": "Test 1", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10]}, {"name": "Test 2", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10]}], "Tag 2": [{"name": "Test 3", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10]}, {"name": "Test 4", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10]}]}
+
+# Standard-Progressions-Werte angepasst an das neue Menü
+def_prog = {"type": "Linear (Nur Gewicht)", "inc_kg": 1.25, "inc_reps": 0, "inc_sec": 0, "freq_inc": 1, "del_pct": 10, "freq_del": 1}
+
+if 'my_plan' not in st.session_state: 
+    st.session_state.my_plan = {
+        "Tag 1": [
+            {"name": "Test 1", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog.copy()}, 
+            {"name": "Test 2", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog.copy()}
+        ], 
+        "Tag 2": [
+            {"name": "Test 3", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog.copy()}, 
+            {"name": "Test 4", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog.copy()}
+        ]
+    }
 if 'training_logs' not in st.session_state: st.session_state.training_logs = {}
 if 'device_settings' not in st.session_state: st.session_state.device_settings = {}
 
@@ -49,7 +63,6 @@ with tab_train:
             with c_n2:
                 st.text_input(f"Notiz", key=f"note_{name}_{w_label}_{selected_day}")
 
-            # Neue Spalte für das Done-Häkchen hinzugefügt
             cols = st.columns([1, 2, 2, 2, 3, 1])
             cols[0].caption("Set"); cols[1].caption("KG"); cols[2].caption("Reps"); cols[3].caption("RIR"); cols[4].caption("Pain"); cols[5].caption("Done")
 
@@ -65,7 +78,6 @@ with tab_train:
                 r_p = s_cols[4].selectbox("p", options=[0, 1, 2], index=int(cur_l.get("p", 0)), key=f"p_in_{l_key}", label_visibility="collapsed")
                 r_done = s_cols[5].checkbox("Done", value=cur_l.get("done", False), key=f"done_in_{l_key}", label_visibility="collapsed")
                 
-                # Zeitstempel-Logik
                 ts = cur_l.get("ts", "")
                 if r_done and not cur_l.get("done", False):
                     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -75,7 +87,7 @@ with tab_train:
                 st.session_state.training_logs[l_key] = {"kg": r_kg, "r": r_r, "rir": r_rir, "p": r_p, "done": r_done, "ts": ts}
             st.divider()
 
-# --- TAB 2: PLANER (GELOCKT) ---
+# --- TAB 2: PLANER ---
 with tab_plan:
     st.header("Konfiguration")
     
@@ -106,12 +118,15 @@ with tab_plan:
                 st.write(f"**Sätze & Reps für: {n}**")
                 o_sets = [3] * st.session_state.cycle_weeks
                 o_reps = [10] * st.session_state.cycle_weeks
+                o_prog = def_prog.copy()
+                
                 for e in cur_exs:
                     if e["name"] == n:
                         if "sets" in e and isinstance(e["sets"], list): o_sets = e["sets"]
                         elif "sets" in e: o_sets = [e["sets"]] * st.session_state.cycle_weeks
                         if "reps" in e and isinstance(e["reps"], list): o_reps = e["reps"]
                         elif "reps" in e: o_reps = [e["reps"]] * st.session_state.cycle_weeks
+                        if "progression" in e: o_prog = e["progression"]
                 
                 w_cols = st.columns(st.session_state.cycle_weeks)
                 n_sets = []
@@ -120,10 +135,47 @@ with tab_plan:
                     v_s = o_sets[w] if w < len(o_sets) else o_sets[-1]
                     v_r = o_reps[w] if w < len(o_reps) else o_reps[-1]
                     s_v = w_cols[w].number_input(f"W{w+1} Sätze", 1, 15, int(v_s), key=f"s_{d_key}_{n}_{w}")
-                    r_v = w_cols[w].number_input(f"W{w+1} Reps", 1, 100, int(v_r), key=f"r_{d_key}_{n}_{w}")
+                    r_v = w_cols[w].number_input(f"W{w+1} Reps/Sek", 1, 300, int(v_r), key=f"r_{d_key}_{n}_{w}")
                     n_sets.append(s_v)
                     n_reps.append(r_v)
-                upd_data.append({"name": n, "sets": n_sets, "reps": n_reps})
+                
+                # Ausklappbares Progressions-Menü
+                with st.expander(f"⚙️ Progression & Deload für {n}"):
+                    type_options = ["Linear (Nur Gewicht)", "Double Progression (Gewicht & Reps)", "Zeit (Sekunden)"]
+                    current_type = o_prog.get("type", "Linear (Nur Gewicht)")
+                    if current_type not in type_options: current_type = "Linear (Nur Gewicht)"
+                    
+                    p_type = st.selectbox("Progressions-Modell", type_options, index=type_options.index(current_type), key=f"ptype_{d_key}_{n}")
+                    
+                    p_col1, p_col2, p_col3 = st.columns(3)
+                    
+                    if p_type == "Linear (Nur Gewicht)":
+                        i_kg = p_col1.number_input("+ KG", 0.0, 50.0, float(o_prog.get("inc_kg", 1.25)), step=1.25, key=f"pkg_{d_key}_{n}")
+                        i_r = 0
+                        i_sec = 0
+                    elif p_type == "Double Progression (Gewicht & Reps)":
+                        i_kg = p_col1.number_input("+ KG", 0.0, 50.0, float(o_prog.get("inc_kg", 1.25)), step=1.25, key=f"pkg_{d_key}_{n}")
+                        i_r = p_col2.number_input("+ Reps", 0, 20, int(o_prog.get("inc_reps", 1)), step=1, key=f"prep_{d_key}_{n}")
+                        i_sec = 0
+                    else:
+                        i_sec = p_col1.number_input("+ Sekunden", 0, 100, int(o_prog.get("inc_sec", 5)), step=1, key=f"psec_{d_key}_{n}")
+                        i_kg = 0.0
+                        i_r = 0
+                        
+                    f_inc = p_col1.number_input("Freq. Steig. (Wochen)", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"finc_{d_key}_{n}")
+                    d_pct = p_col2.number_input("- Deload bei Pain (%)", 0, 100, int(o_prog.get("del_pct", 10)), step=1, key=f"dpct_{d_key}_{n}")
+                    
+                    new_prog = {
+                        "type": p_type,
+                        "inc_kg": i_kg,
+                        "inc_reps": i_r,
+                        "inc_sec": i_sec,
+                        "freq_inc": f_inc,
+                        "del_pct": d_pct,
+                        "freq_del": o_prog.get("freq_del", 1)
+                    }
+
+                upd_data.append({"name": n, "sets": n_sets, "reps": n_reps, "progression": new_prog})
                 st.divider()
             
             st.session_state.my_plan[d_key] = upd_data
@@ -135,7 +187,7 @@ with tab_plan:
 
     st.divider()
     if st.button("Neuen Trainingstag hinzufügen"):
-        st.session_state.my_plan["Neuer Tag"] = [{"name": "Neue Übung", "sets": [3] * st.session_state.cycle_weeks, "reps": [10] * st.session_state.cycle_weeks}]
+        st.session_state.my_plan["Neuer Tag"] = [{"name": "Neue Übung", "sets": [3] * st.session_state.cycle_weeks, "reps": [10] * st.session_state.cycle_weeks, "progression": def_prog.copy()}]
         st.rerun()
 
 # --- TAB 3: DATEN-VERWALTUNG ---
@@ -168,7 +220,6 @@ with tab_data:
     if st.session_state.training_logs:
         exp_list = []
         for k, v in st.session_state.training_logs.items():
-            # Exportiert NUR Sätze, die als "done" markiert sind
             if v.get("done", False):
                 p = k.split("_")
                 if len(p) >= 4:
@@ -191,7 +242,6 @@ with tab_calendar:
     else:
         hist_list = []
         for k, v in st.session_state.training_logs.items():
-            # Zeigt NUR Sätze, die als "done" markiert sind
             if v.get("done", False):
                 p = k.split("_")
                 if len(p) >= 4:
