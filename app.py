@@ -77,6 +77,12 @@ with tab_plan:
     for d_key in list(st.session_state.my_plan.keys()):
         with st.expander(f"Bearbeite: {d_key}", expanded=True):
             new_name = st.text_input("Name des Tages:", value=d_key, key=f"ren_{d_key}")
+            
+            # Auto-Save für den Namen (lädt die Seite sofort neu)
+            if new_name != d_key and new_name.strip() != "":
+                st.session_state.my_plan[new_name] = st.session_state.my_plan.pop(d_key)
+                st.rerun()
+                
             cur_exs = st.session_state.my_plan[d_key]
             ex_txt = "\n".join([e["name"] for e in cur_exs])
             new_ex_txt = st.text_area("Übungen (eine pro Zeile):", value=ex_txt, key=f"edit_{d_key}")
@@ -100,83 +106,4 @@ with tab_plan:
                 n_reps = []
                 for w in range(st.session_state.cycle_weeks):
                     v_s = o_sets[w] if w < len(o_sets) else o_sets[-1]
-                    v_r = o_reps[w] if w < len(o_reps) else o_reps[-1]
-                    s_v = w_cols[w].number_input(f"W{w+1} Sätze", 1, 15, int(v_s), key=f"s_{d_key}_{n}_{w}")
-                    r_v = w_cols[w].number_input(f"W{w+1} Reps", 1, 100, int(v_r), key=f"r_{d_key}_{n}_{w}")
-                    n_sets.append(s_v)
-                    n_reps.append(r_v)
-                upd_data.append({"name": n, "sets": n_sets, "reps": n_reps})
-                st.divider()
-            
-            st.session_state.my_plan[d_key] = upd_data
-            
-            c_s, c_d = st.columns(2)
-            if c_s.button("Tag umbenennen", key=f"save_{d_key}"):
-                if new_name != d_key and new_name.strip() != "":
-                    st.session_state.my_plan[new_name] = st.session_state.my_plan.pop(d_key)
-                    st.rerun()
-            if c_d.button("Tag löschen", key=f"del_{d_key}"):
-                if len(st.session_state.my_plan) > 1:
-                    st.session_state.my_plan.pop(d_key)
-                    st.rerun()
-
-    st.divider()
-    if st.button("Neuen Trainingstag hinzufügen"):
-        st.session_state.my_plan["Neuer Tag"] = [{"name": "Neue Übung", "sets": [3] * st.session_state.cycle_weeks, "reps": [10] * st.session_state.cycle_weeks}]
-        st.rerun()
-
-# --- TAB 3: DATEN-VERWALTUNG ---
-with tab_data:
-    st.header("Daten Import & Export")
-    
-    uploaded_csv = st.file_uploader("Excel-Import (CSV) hochladen", type=["csv"])
-    if uploaded_csv is not None:
-        if st.button("Import bestätigen"):
-            try:
-                df_import = pd.read_csv(uploaded_csv, sep=";")
-                if not df_import.empty:
-                    for _, row in df_import.iterrows():
-                        l_key = f"{row['Woche']}_{row['Tag']}_{row['Übung']}_{row['Satz']}"
-                        st.session_state.training_logs[l_key] = {"kg": float(row["KG"]), "r": int(row["Reps"]), "rir": int(row["RIR"]), "p": int(row["Pain"])}
-                st.success("Daten erfolgreich importiert!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Fehler beim Import: {e}. Bitte stelle sicher, dass es die von hier exportierte CSV-Datei ist.")
-
-    st.divider()
-    
-    if st.session_state.training_logs:
-        exp_list = []
-        for k, v in st.session_state.training_logs.items():
-            p = k.split("_")
-            if len(p) >= 4:
-                exp_list.append({"Woche": p[0], "Tag": p[1], "Übung": p[2], "Satz": p[3], "KG": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
-        df = pd.DataFrame(exp_list)
-        csv = df.to_csv(index=False, sep=";", encoding="utf-8-sig")
-        st.download_button("Excel-Export (CSV) herunterladen", data=csv, file_name="training_export.csv", mime="text/csv")
-        st.dataframe(df, use_container_width=True)
-
-# --- TAB 4: HISTORIE ---
-with tab_calendar:
-    st.header("Trainingshistorie")
-    
-    if not st.session_state.training_logs:
-        st.info("Noch keine Trainingsdaten vorhanden.")
-    else:
-        hist_list = []
-        for k, v in st.session_state.training_logs.items():
-            p = k.split("_")
-            if len(p) >= 4:
-                hist_list.append({"Woche": p[0], "Tag": p[1], "Übung": p[2], "Satz": p[3], "KG": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
-        
-        df_hist = pd.DataFrame(hist_list)
-        
-        wochen = df_hist["Woche"].unique()
-        for woche in sorted(wochen):
-            with st.expander(f"Ansicht: {woche}", expanded=False):
-                df_woche = df_hist[df_hist["Woche"] == woche]
-                tage = df_woche["Tag"].unique()
-                for tag in sorted(tage):
-                    st.markdown(f"**{tag}**")
-                    df_tag = df_woche[df_woche["Tag"] == tag]
-                    st.dataframe(df_tag[["Übung", "Satz", "KG", "Reps", "RIR", "Pain"]], use_container_width=True, hide_index=True)
+                    v_r = o_reps[w] if w < len(o_reps) else
