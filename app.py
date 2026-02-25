@@ -78,10 +78,13 @@ with tab_plan:
         with st.expander(f"Bearbeite: {d_key}", expanded=True):
             new_name = st.text_input("Name des Tages:", value=d_key, key=f"ren_{d_key}")
             
-            # Auto-Save für den Namen (lädt die Seite sofort neu)
+            # Auto-Save für den Namen mit Duplikat-Schutz
             if new_name != d_key and new_name.strip() != "":
-                st.session_state.my_plan[new_name] = st.session_state.my_plan.pop(d_key)
-                st.rerun()
+                if new_name not in st.session_state.my_plan:
+                    st.session_state.my_plan[new_name] = st.session_state.my_plan.pop(d_key)
+                    st.rerun()
+                else:
+                    st.warning("Dieser Name existiert bereits. Bitte wähle einen anderen.")
                 
             cur_exs = st.session_state.my_plan[d_key]
             ex_txt = "\n".join([e["name"] for e in cur_exs])
