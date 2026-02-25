@@ -1,54 +1,51 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
-from datetime import datetime
 
-# --- 1. DER TRAININGSPLAN (Das Herzstück) ---
-# Hier definieren wir, welche Übungen zu welchem Tag gehören
-TRAINING_PLAN = {
-    "Tag A (Unterkörper)": ["Kniebeugen", "Beinstrecker", "Wadenheben"],
-    "Tag B (Oberkörper)": ["Bankdrücken", "Rudern", "Schulterdrücken"],
-    "Tag C (Full Body)": ["Kreuzheben", "Klimmzüge", "Dips"]
-}
+st.set_page_config(page_title="Strong-Pain-Coach", layout="wide") # 'wide' für bessere Tabellen-Ansicht
 
-st.set_page_config(page_title="Strong-Pain-Coach", layout="centered")
-st.title("🏋️ Dein Trainingsplan")
+# 1. DER TRAININGSPLAN
+if 'my_plan' not in st.session_state:
+    st.session_state.my_plan = {
+        "Tag A (Push)": ["Bankdrücken", "Schulterdrücken", "Trizeps Dips"],
+        "Tag B (Pull)": ["Klimmzüge", "Rudern", "Bizeps Curls"]
+    }
 
-# --- 2. SESSION STARTEN ---
-if 'active_session' not in st.session_state:
-    selected_day = st.selectbox("Welchen Tag trainierst du heute?", list(TRAINING_PLAN.keys()))
-    if st.button("Training starten"):
-        st.session_state.active_session = selected_day
-        st.session_state.current_exercise_idx = 0
-        st.rerun()
+st.title("🏋️ Trainings-Einheit")
 
-# --- 3. DURCHFÜHRUNG ---
-if 'active_session' in st.session_state:
-    current_day = st.session_state.active_session
-    exercises = TRAINING_PLAN[current_day]
-    current_idx = st.session_state.current_exercise_idx
-    
-    if current_idx < len(exercises):
-        current_ex = exercises[current_idx]
-        st.subheader(f"Übung {current_idx + 1}/{len(exercises)}: {current_ex}")
+# 2. TAG WÄHLEN
+selected_day = st.selectbox("Welcher Tag steht an?", list(st.session_state.my_plan.keys()))
+current_exercises = st.session_state.my_plan[selected_day]
+
+st.markdown("---")
+
+# 3. DAS DASHBOARD (Alles permanent sichtbar)
+for i, ex in enumerate(current_exercises):
+    # Container für jede Übung ohne Aufklapp-Funktion
+    with st.container():
+        col_header, col_move = st.columns([8, 2])
         
-        # Log-Bereich für diese spezifische Übung
-        with st.form(f"form_{current_ex}"):
-            col1, col2 = st.columns(2)
-            w = col1.number_input("KG", value=20.0, step=1.25)
-            r = col2.number_input("Reps", value=10, step=1)
-            p = st.select_slider("Schmerz", options=[0, 1, 2])
-            
-            if st.form_submit_button("Satz beendet"):
-                # (Hier käme der SQLite Speicher-Befehl hin)
-                st.toast(f"Satz für {current_ex} gespeichert!")
+        with col_header:
+            st.subheader(f"{i+1}. {ex}")
         
-        # Navigation zur nächsten Übung
-        if st.button("Nächste Übung →"):
-            st.session_state.current_exercise_idx += 1
-            st.rerun()
-    else:
-        st.success("🎉 Training beendet!")
-        if st.button("Session schließen"):
-            del st.session_state.active_session
-            st.rerun()
+        with col_move:
+            # Schnelle Sortierung
+            up, down = st.columns(2)
+            if up.button("▲", key=f"up_{ex}_{i}") and i > 0:
+                current_exercises[i], current_exercises[i-1] = current_exercises[i-1], current_exercises[i]
+                st.rerun()
+            if down.button("▼", key=f"down_{ex}_{i}") and i < len(current_exercises)-1:
+                current_exercises[i], current_exercises[i+1] = current_exercises[i+1], current_exercises[i]
+                st.rerun()
+
+        # Die Satz-Matrix (3 Sätze immer präsent)
+        cols = st.columns([1, 2, 2, 2, 3])
+        cols[0].caption("Set")
+        cols[1].caption("KG")
+        cols[2].caption("Reps")
+        cols[3].caption("RIR")
+        cols[4].caption("Pain")
+
+        for s in range(1, 4):
+            s_cols = st.columns([1, 2, 2, 2, 3])
+            s_cols[0].write(f"**{s}**")
+            s_cols[1].number_input("kg", value=20.0, step=1.25, key=f"w_{ex}_{
