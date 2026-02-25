@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
@@ -48,24 +49,33 @@ with tab_train:
             with c_n2:
                 st.text_input(f"Notiz", key=f"note_{name}_{w_label}_{selected_day}")
 
-            cols = st.columns([1, 2, 2, 2, 3])
-            cols[0].caption("Set"); cols[1].caption("KG"); cols[2].caption("Reps"); cols[3].caption("RIR"); cols[4].caption("Pain")
+            # Neue Spalte für das Done-Häkchen hinzugefügt
+            cols = st.columns([1, 2, 2, 2, 3, 1])
+            cols[0].caption("Set"); cols[1].caption("KG"); cols[2].caption("Reps"); cols[3].caption("RIR"); cols[4].caption("Pain"); cols[5].caption("Done")
 
             for s in range(1, c_sets + 1):
-                s_cols = st.columns([1, 2, 2, 2, 3])
+                s_cols = st.columns([1, 2, 2, 2, 3, 1])
                 s_cols[0].write(f"**{s}**")
                 l_key = f"{w_label}_{selected_day}_{name}_{s}"
-                cur_l = st.session_state.training_logs.get(l_key, {"kg": 20.0, "r": c_reps, "rir": 2, "p": 0})
+                cur_l = st.session_state.training_logs.get(l_key, {"kg": 20.0, "r": c_reps, "rir": 2, "p": 0, "done": False, "ts": ""})
                 
                 r_kg = s_cols[1].number_input("kg", value=float(cur_l.get("kg", 20.0)), step=1.25, key=f"w_in_{l_key}", label_visibility="collapsed")
                 r_r = s_cols[2].number_input("r", value=int(cur_l.get("r", c_reps)), step=1, key=f"r_in_{l_key}", label_visibility="collapsed")
                 r_rir = s_cols[3].number_input("rir", value=int(cur_l.get("rir", 2)), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
                 r_p = s_cols[4].selectbox("p", options=[0, 1, 2], index=int(cur_l.get("p", 0)), key=f"p_in_{l_key}", label_visibility="collapsed")
+                r_done = s_cols[5].checkbox("Done", value=cur_l.get("done", False), key=f"done_in_{l_key}", label_visibility="collapsed")
                 
-                st.session_state.training_logs[l_key] = {"kg": r_kg, "r": r_r, "rir": r_rir, "p": r_p}
+                # Zeitstempel-Logik
+                ts = cur_l.get("ts", "")
+                if r_done and not cur_l.get("done", False):
+                    ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+                elif not r_done:
+                    ts = ""
+                
+                st.session_state.training_logs[l_key] = {"kg": r_kg, "r": r_r, "rir": r_rir, "p": r_p, "done": r_done, "ts": ts}
             st.divider()
 
-# --- TAB 2: PLANER ---
+# --- TAB 2: PLANER (GELOCKT) ---
 with tab_plan:
     st.header("Konfiguration")
     
@@ -78,7 +88,6 @@ with tab_plan:
         with st.expander(f"Bearbeite: {d_key}", expanded=True):
             new_name = st.text_input("Name des Tages:", value=d_key, key=f"ren_{d_key}")
             
-            # Auto-Save für den Namen mit Duplikat-Schutz
             if new_name != d_key and new_name.strip() != "":
                 if new_name not in st.session_state.my_plan:
                     st.session_state.my_plan[new_name] = st.session_state.my_plan.pop(d_key)
@@ -141,7 +150,14 @@ with tab_data:
                 if not df_import.empty:
                     for _, row in df_import.iterrows():
                         l_key = f"{row['Woche']}_{row['Tag']}_{row['Übung']}_{row['Satz']}"
-                        st.session_state.training_logs[l_key] = {"kg": float(row["KG"]), "r": int(row["Reps"]), "rir": int(row["RIR"]), "p": int(row["Pain"])}
+                        st.session_state.training_logs[l_key] = {
+                            "kg": float(row["KG"]), 
+                            "r": int(row["Reps"]), 
+                            "rir": int(row["RIR"]), 
+                            "p": int(row["Pain"]),
+                            "done": True,
+                            "ts": str(row["Datum"]) if "Datum" in row else ""
+                        }
                 st.success("Daten erfolgreich importiert!")
                 st.rerun()
             except Exception as e:
@@ -152,13 +168,19 @@ with tab_data:
     if st.session_state.training_logs:
         exp_list = []
         for k, v in st.session_state.training_logs.items():
-            p = k.split("_")
-            if len(p) >= 4:
-                exp_list.append({"Woche": p[0], "Tag": p[1], "Übung": p[2], "Satz": p[3], "KG": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
-        df = pd.DataFrame(exp_list)
-        csv = df.to_csv(index=False, sep=";", encoding="utf-8-sig")
-        st.download_button("Excel-Export (CSV) herunterladen", data=csv, file_name="training_export.csv", mime="text/csv")
-        st.dataframe(df, use_container_width=True)
+            # Exportiert NUR Sätze, die als "done" markiert sind
+            if v.get("done", False):
+                p = k.split("_")
+                if len(p) >= 4:
+                    exp_list.append({"Datum": v.get("ts", ""), "Woche": p[0], "Tag": p[1], "Übung": p[2], "Satz": p[3], "KG": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
+        
+        if exp_list:
+            df = pd.DataFrame(exp_list)
+            csv = df.to_csv(index=False, sep=";", encoding="utf-8-sig")
+            st.download_button("Excel-Export (CSV) herunterladen", data=csv, file_name="training_export.csv", mime="text/csv")
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("Noch keine Sätze als erledigt markiert. Nichts zu exportieren.")
 
 # --- TAB 4: HISTORIE ---
 with tab_calendar:
@@ -169,18 +191,22 @@ with tab_calendar:
     else:
         hist_list = []
         for k, v in st.session_state.training_logs.items():
-            p = k.split("_")
-            if len(p) >= 4:
-                hist_list.append({"Woche": p[0], "Tag": p[1], "Übung": p[2], "Satz": p[3], "KG": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
+            # Zeigt NUR Sätze, die als "done" markiert sind
+            if v.get("done", False):
+                p = k.split("_")
+                if len(p) >= 4:
+                    hist_list.append({"Datum": v.get("ts", ""), "Woche": p[0], "Tag": p[1], "Übung": p[2], "Satz": p[3], "KG": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
         
-        df_hist = pd.DataFrame(hist_list)
-        
-        wochen = df_hist["Woche"].unique()
-        for woche in sorted(wochen):
-            with st.expander(f"Ansicht: {woche}", expanded=False):
-                df_woche = df_hist[df_hist["Woche"] == woche]
-                tage = df_woche["Tag"].unique()
-                for tag in sorted(tage):
-                    st.markdown(f"**{tag}**")
-                    df_tag = df_woche[df_woche["Tag"] == tag]
-                    st.dataframe(df_tag[["Übung", "Satz", "KG", "Reps", "RIR", "Pain"]], use_container_width=True, hide_index=True)
+        if hist_list:
+            df_hist = pd.DataFrame(hist_list)
+            wochen = df_hist["Woche"].unique()
+            for woche in sorted(wochen):
+                with st.expander(f"Ansicht: {woche}", expanded=False):
+                    df_woche = df_hist[df_hist["Woche"] == woche]
+                    tage = df_woche["Tag"].unique()
+                    for tag in sorted(tage):
+                        st.markdown(f"**{tag}**")
+                        df_tag = df_woche[df_woche["Tag"] == tag]
+                        st.dataframe(df_tag[["Datum", "Übung", "Satz", "KG", "Reps", "RIR", "Pain"]], use_container_width=True, hide_index=True)
+        else:
+            st.info("Noch keine Sätze als erledigt markiert.")
