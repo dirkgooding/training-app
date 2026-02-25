@@ -8,8 +8,8 @@ st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 # --- INITIALISIERUNG ---
 if 'cycle_weeks' not in st.session_state: st.session_state.cycle_weeks = 4
 
-# Standard-Progressions-Werte angepasst an das neue Menü
-def_prog = {"type": "Linear (Nur Gewicht)", "inc_kg": 1.25, "inc_reps": 0, "inc_sec": 0, "freq_inc": 1, "del_pct": 10, "freq_del": 1}
+# Standard-Progressions-Werte bereinigt
+def_prog = {"type": "Linear (Nur Gewicht)", "inc_kg": 1.25, "inc_reps": 0, "inc_sec": 0, "freq_inc": 1}
 
 if 'my_plan' not in st.session_state: 
     st.session_state.my_plan = {
@@ -64,7 +64,7 @@ with tab_train:
                 st.text_input(f"Notiz", key=f"note_{name}_{w_label}_{selected_day}")
 
             cols = st.columns([1, 2, 2, 2, 3, 1])
-            cols[0].caption("Set"); cols[1].caption("KG"); cols[2].caption("Reps"); cols[3].caption("RIR"); cols[4].caption("Pain"); cols[5].caption("Done")
+            cols[0].caption("Set"); cols[1].caption("KG/Inc"); cols[2].caption("Reps"); cols[3].caption("RIR"); cols[4].caption("Pain"); cols[5].caption("Done")
 
             for s in range(1, c_sets + 1):
                 s_cols = st.columns([1, 2, 2, 2, 3, 1])
@@ -139,7 +139,6 @@ with tab_plan:
                     n_sets.append(s_v)
                     n_reps.append(r_v)
                 
-                # Ausklappbares Progressions-Menü
                 with st.expander(f"⚙️ Progression & Deload für {n}"):
                     type_options = ["Linear (Nur Gewicht)", "Double Progression (Gewicht & Reps)", "Zeit (Sekunden)"]
                     current_type = o_prog.get("type", "Linear (Nur Gewicht)")
@@ -150,11 +149,11 @@ with tab_plan:
                     p_col1, p_col2, p_col3 = st.columns(3)
                     
                     if p_type == "Linear (Nur Gewicht)":
-                        i_kg = p_col1.number_input("+ KG", 0.0, 50.0, float(o_prog.get("inc_kg", 1.25)), step=1.25, key=f"pkg_{d_key}_{n}")
+                        i_kg = p_col1.number_input("+ Increment", 0.0, 50.0, float(o_prog.get("inc_kg", 1.25)), step=1.25, key=f"pkg_{d_key}_{n}")
                         i_r = 0
                         i_sec = 0
                     elif p_type == "Double Progression (Gewicht & Reps)":
-                        i_kg = p_col1.number_input("+ KG", 0.0, 50.0, float(o_prog.get("inc_kg", 1.25)), step=1.25, key=f"pkg_{d_key}_{n}")
+                        i_kg = p_col1.number_input("+ Increment", 0.0, 50.0, float(o_prog.get("inc_kg", 1.25)), step=1.25, key=f"pkg_{d_key}_{n}")
                         i_r = p_col2.number_input("+ Reps", 0, 20, int(o_prog.get("inc_reps", 1)), step=1, key=f"prep_{d_key}_{n}")
                         i_sec = 0
                     else:
@@ -163,16 +162,13 @@ with tab_plan:
                         i_r = 0
                         
                     f_inc = p_col1.number_input("Freq. Steig. (Wochen)", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"finc_{d_key}_{n}")
-                    d_pct = p_col2.number_input("- Deload bei Pain (%)", 0, 100, int(o_prog.get("del_pct", 10)), step=1, key=f"dpct_{d_key}_{n}")
                     
                     new_prog = {
                         "type": p_type,
                         "inc_kg": i_kg,
                         "inc_reps": i_r,
                         "inc_sec": i_sec,
-                        "freq_inc": f_inc,
-                        "del_pct": d_pct,
-                        "freq_del": o_prog.get("freq_del", 1)
+                        "freq_inc": f_inc
                     }
 
                 upd_data.append({"name": n, "sets": n_sets, "reps": n_reps, "progression": new_prog})
