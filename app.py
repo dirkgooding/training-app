@@ -124,4 +124,4 @@ with tab_train:
 
 # --- TAB 2: PLANER ---
 with tab_plan:
-    st.header("📊
+    st.header("📊)
