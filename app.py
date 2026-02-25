@@ -9,7 +9,6 @@ st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def save_to_sheets():
-    # Wir wandeln den Plan in eine Liste um
     flat_data = []
     for day, exercises in st.session_state.my_plan.items():
         for ex in exercises:
@@ -19,15 +18,14 @@ def save_to_sheets():
                 "Sätze": int(ex["sets"])
             })
     df = pd.DataFrame(flat_data)
-    # Speichern in das Tabellenblatt "Plan"
+    # Speichert in das Tabellenblatt "Plan"
     conn.update(worksheet="Plan", data=df)
-    st.success("Plan erfolgreich in Google Sheets gesichert!")
+    st.success("Plan in Google Sheets gesichert!")
 
 def load_from_sheets():
     try:
-        # Versuche die Tabelle zu lesen
         df = conn.read(worksheet="Plan")
-        if df.empty:
+        if df is None or df.empty:
             return False
         
         new_plan = {}
@@ -46,9 +44,7 @@ def load_from_sheets():
 
 # --- INITIALISIERUNG ---
 if 'my_plan' not in st.session_state:
-    # Erst versuchen aus Google Sheets zu laden
     if not load_from_sheets():
-        # Fallback, wenn Sheets leer oder Verbindung fehlt
         st.session_state.my_plan = {
             "Tag A": [{"name": "Kniebeugen", "sets": 3}, {"name": "Bankdrücken", "sets": 3}],
             "Tag B": [{"name": "Kreuzheben", "sets": 3}, {"name": "Klimmzüge", "sets": 3}]
@@ -101,11 +97,9 @@ with tab_train:
 # --- TAB 2: PLANER ---
 with tab_plan:
     st.header("Konfiguration")
-    
-    # Der Cloud-Speicher Button
     if st.button("☁️ PLAN IN GOOGLE SHEETS SICHERN", use_container_width=True, type="primary"):
         save_to_sheets()
-
+    
     st.divider()
     
     new_cycle = st.number_input("Zyklus-Dauer (Wochen):", min_value=1, max_value=52, value=st.session_state.cycle_weeks, key="cycle_input")
