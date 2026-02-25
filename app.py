@@ -1,27 +1,52 @@
 import streamlit as st
+import json
+import os
 
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 
-# --- 1. DATENSTRUKTUR INITIALISIEREN ---
-# Wir nutzen eine Liste von Dicts für die Übungen, um individuelle Sätze zu ermöglichen
-if 'my_plan' not in st.session_state:
-    st.session_state.my_plan = {
-        "Tag A": [
-            {"name": "Kniebeugen", "sets": 3},
-            {"name": "Bankdrücken", "sets": 3}
-        ],
-        "Tag B": [
-            {"name": "Kreuzheben", "sets": 3},
-            {"name": "Klimmzüge", "sets": 3}
-        ]
+# Name der Speicherdatei
+DB_FILE = "trainingsplan.json"
+
+# --- SPEICHER-FUNKTIONEN ---
+def save_data():
+    data = {
+        "my_plan": st.session_state.my_plan,
+        "cycle_weeks": st.session_state.cycle_weeks,
+        "device_settings": st.session_state.device_settings
     }
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
-if 'device_settings' not in st.session_state:
-    st.session_state.device_settings = {}
+def load_data():
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                st.session_state.my_plan = data.get("my_plan", {})
+                st.session_state.cycle_weeks = data.get("cycle_weeks", 12)
+                st.session_state.device_settings = data.get("device_settings", {})
+            return True
+        except Exception:
+            return False
+    return False
 
-if 'cycle_weeks' not in st.session_state:
-    st.session_state.cycle_weeks = 12
+# --- INITIALISIERUNG ---
+if 'my_plan' not in st.session_state:
+    if not load_data():
+        # Fallback-Daten, falls keine Datei existiert
+        st.session_state.my_plan = {
+            "Tag A": [
+                {"name": "Kniebeugen", "sets": 3},
+                {"name": "Bankdrücken", "sets": 3}
+            ],
+            "Tag B": [
+                {"name": "Kreuzheben", "sets": 3},
+                {"name": "Klimmzüge", "sets": 3}
+            ]
+        }
+        st.session_state.device_settings = {}
+        st.session_state.cycle_weeks = 12
 
 # --- TABS ---
 tab_train, tab_plan = st.tabs(["🏋️ Training", "⚙️ Planer & Einstellungen"])
@@ -36,7 +61,6 @@ with tab_train:
         tag_namen = list(st.session_state.my_plan.keys())
         selected_day = st.selectbox("📋 Tag wählen:", options=tag_namen, key="select_tag")
 
-    # Sicherstellen, dass der Tag existiert (falls er gelöscht wurde)
     if selected_day in st.session_state.my_plan:
         current_exercises = st.session_state.my_plan[selected_day]
         st.markdown(f"## {selected_day}")
@@ -79,7 +103,13 @@ with tab_train:
 with tab_plan:
     st.header("Konfiguration")
     
-    # Zyklus-Dauer
+    # Master-Speicher-Button
+    if st.button("💾 PLAN DAUERHAFT SPEICHERN", use_container_width=True, type="primary"):
+        save_data()
+        st.success(f"Erfolgreich in '{DB_FILE}' gespeichert!")
+
+    st.divider()
+    
     new_cycle = st.number_input("Zyklus-Dauer (Wochen):", min_value=1, max_value=52, value=st.session_state.cycle_weeks, key="cycle_input")
     if new_cycle != st.session_state.cycle_weeks:
         st.session_state.cycle_weeks = new_cycle
@@ -87,24 +117,19 @@ with tab_plan:
     
     st.divider()
 
-    # Liste der Tage kopieren, um während der Iteration löschen zu können
     for day_key in list(st.session_state.my_plan.keys()):
         with st.expander(f"Bearbeite: {day_key}", expanded=False):
             new_day_name = st.text_input("Name des Tages:", value=day_key, key=f"rename_{day_key}")
             
-            # Übungen verarbeiten
             current_ex_list = st.session_state.my_plan[day_key]
             ex_names_only = "\n".join([ex["name"] for ex in current_ex_list])
             new_ex_names = st.text_area("Übungen (eine pro Zeile):", value=ex_names_only, key=f"ex_edit_{day_key}")
             
-            # Temp Liste für neue Struktur
             temp_names = [n.strip() for n in new_ex_names.split("\n") if n.strip()]
-            
             updated_data = []
-            st.write("**Individuelle Sätze pro Übung:**")
             
+            st.write("**Individuelle Sätze pro Übung:**")
             for n in temp_names:
-                # Alten Satz-Wert suchen oder Standard 3
                 default_s = 3
                 for old_ex in current_ex_list:
                     if old_ex["name"] == n:
@@ -113,9 +138,8 @@ with tab_plan:
                 s_val = st.number_input(f"Sätze für {n}:", min_value=1, max_value=15, value=int(default_s), key=f"s_edit_{day_key}_{n}")
                 updated_data.append({"name": n, "sets": s_val})
             
-            # Buttons
             c_save, c_del = st.columns(2)
-            if c_save.button(f"Speichern", key=f"save_btn_{day_key}"):
+            if c_save.button(f"Übernehmen", key=f"save_btn_{day_key}"):
                 if new_day_name != day_key:
                     st.session_state.my_plan.pop(day_key)
                 st.session_state.my_plan[new_day_name] = updated_data
@@ -126,7 +150,7 @@ with tab_plan:
                     st.session_state.my_plan.pop(day_key)
                     st.rerun()
                 else:
-                    st.error("Du musst mindestens einen Tag behalten!")
+                    st.error("Mindestens ein Tag muss bestehen bleiben.")
 
     st.divider()
     if st.button("➕ Neuen Trainingstag hinzufügen"):
