@@ -7,51 +7,36 @@ from datetime import datetime
 st.set_page_config(page_title="Strong-Pain-Coach", layout="centered")
 
 # --- DATABASE CONNECTION ---
+# Wir nutzen die stabilste Verbindungsmethode
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_data():
     try:
-        # Laden der Tabellen ohne Cache (ttl=0)
+        # Laden der Tabellen ohne Cache
         df_l = conn.read(worksheet="Log", ttl=0)
         df_s = conn.read(worksheet="Settings", ttl=0)
         return df_l, df_s
     except Exception as e:
-        st.error("Verbindung fehlgeschlagen. Prüfe Secrets und Sheet-Freigabe.")
-        st.stop()
+        # Falls die Tabelle komplett leer ist (keine Spaltenköpfe), 
+        # erstellen wir leere Datenrahmen, damit die App nicht abstürzt
+        return pd.DataFrame(), pd.DataFrame()
 
 df_log, df_settings = load_data()
-
-# --- LOGIK: PROGRESSION ---
-def calculate_next(exercise_name):
-    # Standardwerte, falls keine Historie existiert
-    if df_settings.empty or exercise_name not in df_settings['Exercise'].values:
-        return 10.0, 10
-        
-    # Suche im Log nach dem letzten Eintrag
-    if not df_log.empty:
-        relevant_log = df_log[df_log['Exercise'] == exercise_name].copy()
-        if not relevant_log.empty:
-            relevant_log['Date'] = pd.to_datetime(relevant_log['Date'])
-            last = relevant_log.sort_values(by='Date').iloc[-1]
-            return float(last['Weight']), int(last['Reps'])
-            
-    return 10.0, 10 # Fallback
 
 # --- UI: MAIN ---
 st.title("🏋️ Strong-Pain-Coach")
 
-if not df_settings.empty:
+# Check ob Daten da sind
+if not df_settings.empty and "Exercise" in df_settings.columns:
     exercise = st.selectbox("Wähle Übung", df_settings['Exercise'].tolist())
-    target_w, target_r = calculate_next(exercise)
-
+    
     with st.form("log_form"):
-        st.subheader(f"Ziel: {target_w} kg x {target_r}")
-        c1, c2 = st.columns(2)
-        w = c1.number_input("Gewicht", value=float(target_w), step=0.25)
-        r = c2.number_input("Reps", value=int(target_r), step=1)
+        st.subheader(f"Training loggen")
+        w = st.number_input("Gewicht (kg)", value=10.0, step=0.25)
+        r = st.number_input("Wiederholungen", value=10, step=1)
         p = st.select_slider("Schmerz (0=OK, 1=Leicht, 2=Stopp)", options=[0, 1, 2])
         
-        if st.form_submit_button("Speichern"):
+        if st.form_submit_button("Satz speichern"):
             new_row = pd.DataFrame([{
                 "Date": datetime.now().strftime("%Y-%m-%d"),
                 "Exercise": exercise, "Weight": w, "Reps": r, "Pain": p
@@ -61,4 +46,5 @@ if not df_settings.empty:
             st.success("Gespeichert! 🎉")
             st.balloons()
 else:
-    st.warning("Keine Übungen in 'Settings' gefunden.")
+    st.warning("⚠️ Bitte trage in dein Google Sheet im Reiter 'Settings' in die erste Zeile 'Exercise' ein und darunter deine erste Übung.")
+    st.info("Die App braucht mindestens eine Übung, um zu starten.")
