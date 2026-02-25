@@ -2,8 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 
-# --- 1. DATENSPEICHERUNG (Session State) ---
-# Wir passen die Struktur minimal an, um die Anzahl der Sätze pro Tag zu speichern
+# --- 1. DATENSPEICHERUNG (Initialisierung) ---
 if 'my_plan' not in st.session_state:
     st.session_state.my_plan = {
         "Tag A": {"exercises": ["Kniebeugen", "Bankdrücken"], "sets": 3},
@@ -28,7 +27,7 @@ with tab_train:
     with col_nav2:
         selected_day = st.selectbox("📋 Tag wählen:", list(st.session_state.my_plan.keys()))
 
-    # Daten für den gewählten Tag abrufen
+    # Daten abrufen
     day_data = st.session_state.my_plan[selected_day]
     current_exercises = day_data["exercises"]
     num_sets = day_data["sets"]
@@ -44,12 +43,13 @@ with tab_train:
             old_val = st.session_state.device_settings.get(ex, "")
             st.session_state.device_settings[ex] = st.text_input(f"⚙️ Einstellung (fest)", value=old_val, key=f"dev_{ex}")
         with c_n2:
-            st.text_input(f"📝 Notiz {woche}", key=f"note_{ex}_{woche}")
+            st.text_input(f"📝 Notiz {woche}", key=f"note_{ex}_{woche}_{selected_day}")
 
-        # Matrix
+        # Matrix Kopfzeile
         cols = st.columns([1, 2, 2, 2, 3])
         cols[0].caption("Set"); cols[1].caption("KG"); cols[2].caption("Reps"); cols[3].caption("RIR"); cols[4].caption("Pain")
 
+        # Dynamische Sätze
         for s in range(1, num_sets + 1):
             s_cols = st.columns([1, 2, 2, 2, 3])
             s_cols[0].write(f"**{s}**")
@@ -64,5 +64,41 @@ with tab_plan:
     st.header("Konfiguration deines Trainings")
     
     st.subheader("📅 Zyklus-Dauer")
-    new_weeks = st.number_input("Wie viele Wochen soll ein Zyklus dauern?", min_value=1, max_value=52, value=st.session_state.cycle_weeks)
-    if new_weeks != st.session_state.cycle_weeks
+    new_weeks = st.number_input("Dauer (Wochen):", min_value=1, max_value=52, value=st.session_state.cycle_weeks)
+    if new_weeks != st.session_state.cycle_weeks:
+        st.session_state.cycle_weeks = new_weeks
+        st.rerun()
+    
+    st.divider()
+
+    for day_key in list(st.session_state.my_plan.keys()):
+        with st.expander(f"Bearbeite: {day_key}", expanded=True):
+            new_day_name = st.text_input("Name:", value=day_key, key=f"rename_{day_key}")
+            
+            current_sets = st.session_state.my_plan[day_key]["sets"]
+            new_sets = st.number_input(f"Sätze pro Übung:", min_value=1, max_value=10, value=current_sets, key=f"sets_{day_key}")
+            
+            ex_list = st.session_state.my_plan[day_key]["exercises"]
+            new_ex_str = st.text_area("Übungen (eine pro Zeile):", value="\n".join(ex_list), key=f"ex_edit_{day_key}")
+            
+            col_save, col_del = st.columns(2)
+            with col_save:
+                if st.button(f"Speichern", key=f"btn_save_{day_key}"):
+                    # Alten Key entfernen, falls Name geändert wurde
+                    if new_day_name != day_key:
+                        st.session_state.my_plan.pop(day_key)
+                    # Neuen/Aktualisierten Eintrag speichern
+                    st.session_state.my_plan[new_day_name] = {
+                        "exercises": [e.strip() for e in new_ex_str.split("\n") if e.strip()],
+                        "sets": new_sets
+                    }
+                    st.rerun()
+            with col_del:
+                if st.button(f"🗑️ Tag löschen", key=f"btn_del_{day_key}"):
+                    st.session_state.my_plan.pop(day_key)
+                    st.rerun()
+
+    st.divider()
+    if st.button("➕ Neuen Trainingstag hinzufügen"):
+        st.session_state.my_plan["Neuer Tag"] = {"exercises": ["Übung 1"], "sets": 3}
+        st.rerun()
