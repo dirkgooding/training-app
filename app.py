@@ -1,13 +1,15 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Strong-Pain-Coach", layout="wide") # 'wide' für bessere Tabellen-Ansicht
+# 'wide' sorgt dafür, dass die Zeilen auf dem Handy nicht zu schmal werden
+st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 
-# 1. DER TRAININGSPLAN
+# 1. DEIN TRAININGSPLAN (Das Herzstück)
 if 'my_plan' not in st.session_state:
     st.session_state.my_plan = {
         "Tag A (Push)": ["Bankdrücken", "Schulterdrücken", "Trizeps Dips"],
-        "Tag B (Pull)": ["Klimmzüge", "Rudern", "Bizeps Curls"]
+        "Tag B (Pull)": ["Klimmzüge", "Rudern", "Bizeps Curls"],
+        "Tag C (Beine)": ["Kniebeugen", "Beinstrecker", "Wadenheben"]
     }
 
 st.title("🏋️ Trainings-Einheit")
@@ -18,34 +20,23 @@ current_exercises = st.session_state.my_plan[selected_day]
 
 st.markdown("---")
 
-# 3. DAS DASHBOARD (Alles permanent sichtbar)
-for i, ex in enumerate(current_exercises):
-    # Container für jede Übung ohne Aufklapp-Funktion
-    with st.container():
-        col_header, col_move = st.columns([8, 2])
+# 3. DAS DASHBOARD (Alles permanent offen)
+# Wir nutzen ein Formular für die GESAMTE Seite, damit du am Ende alles mit einem Klick speicherst
+with st.form("overall_workout"):
+    
+    for i, ex in enumerate(current_exercises):
+        # Header für die Übung mit Sortier-Buttons daneben
+        col_header, col_move = st.columns([7, 3])
         
         with col_header:
             st.subheader(f"{i+1}. {ex}")
         
         with col_move:
-            # Schnelle Sortierung
             up, down = st.columns(2)
-            if up.button("▲", key=f"up_{ex}_{i}") and i > 0:
-                current_exercises[i], current_exercises[i-1] = current_exercises[i-1], current_exercises[i]
-                st.rerun()
-            if down.button("▼", key=f"down_{ex}_{i}") and i < len(current_exercises)-1:
-                current_exercises[i], current_exercises[i+1] = current_exercises[i+1], current_exercises[i]
-                st.rerun()
-
-        # Die Satz-Matrix (3 Sätze immer präsent)
-        cols = st.columns([1, 2, 2, 2, 3])
-        cols[0].caption("Set")
-        cols[1].caption("KG")
-        cols[2].caption("Reps")
-        cols[3].caption("RIR")
-        cols[4].caption("Pain")
-
-        for s in range(1, 4):
-            s_cols = st.columns([1, 2, 2, 2, 3])
-            s_cols[0].write(f"**{s}**")
-            s_cols[1].number_input("kg", value=20.0, step=1.25, key=f"w_{ex}_{
+            # Buttons zum Verschieben der Reihenfolge
+            if up.form_submit_button("▲"):
+                if i > 0:
+                    current_exercises[i], current_exercises[i-1] = current_exercises[i-1], current_exercises[i]
+                    st.rerun()
+            if down.form_submit_button("▼"):
+                if i
