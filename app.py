@@ -11,7 +11,7 @@ if 'training_logs' not in st.session_state: st.session_state.training_logs = {}
 if 'device_settings' not in st.session_state: st.session_state.device_settings = {}
 
 # --- TABS ---
-tab_train, tab_plan = st.tabs(["Training", "Planer & Excel-Export"])
+tab_train, tab_plan, tab_data = st.tabs(["Training", "Planer", "Daten-Verwaltung"])
 
 # --- TAB 1: TRAINING ---
 with tab_train:
@@ -64,31 +64,6 @@ with tab_train:
 
 # --- TAB 2: PLANER ---
 with tab_plan:
-    st.header("Daten-Verwaltung")
-    
-    uploaded_csv = st.file_uploader("Excel-Import (CSV) hochladen", type=["csv"])
-    if uploaded_csv is not None:
-        try:
-            df_import = pd.read_csv(uploaded_csv, sep=";")
-            for _, row in df_import.iterrows():
-                l_key = f"{row['Woche']}_{row['Tag']}_{row['Übung']}_{row['Satz']}"
-                st.session_state.training_logs[l_key] = {"kg": float(row["KG"]), "r": int(row["Reps"]), "rir": int(row["RIR"]), "p": int(row["Pain"])}
-            st.success("Daten erfolgreich importiert!")
-        except Exception as e:
-            st.error(f"Fehler beim Import: {e}. Bitte stelle sicher, dass es die von hier exportierte CSV-Datei ist.")
-
-    if st.session_state.training_logs:
-        exp_list = []
-        for k, v in st.session_state.training_logs.items():
-            p = k.split("_")
-            if len(p) >= 4:
-                exp_list.append({"Woche": p[0], "Tag": p[1], "Übung": p[2], "Satz": p[3], "KG": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
-        df = pd.DataFrame(exp_list)
-        csv = df.to_csv(index=False, sep=";", encoding="utf-8-sig")
-        st.download_button("Excel-Export (CSV)", data=csv, file_name="training_export.csv", mime="text/csv")
-        st.dataframe(df, use_container_width=True)
-
-    st.divider()
     st.header("Konfiguration")
     
     new_w = st.number_input("Zyklus-Dauer (Wochen):", min_value=1, max_value=12, value=st.session_state.cycle_weeks)
@@ -125,12 +100,13 @@ with tab_plan:
             
             st.session_state.my_plan[d_key] = upd_data
             
-            # Automatische Speicherung der Namensänderung
-            if new_name != d_key and new_name.strip() != "":
-                st.session_state.my_plan[new_name] = st.session_state.my_plan.pop(d_key)
-                st.rerun()
-
-            if st.button("Tag löschen", key=f"del_{d_key}"):
+            c_s, c_d = st.columns(2)
+            if c_s.button("Tag umbenennen", key=f"save_{d_key}"):
+                if new_name != d_key:
+                    st.session_state.my_plan.pop(d_key)
+                    st.session_state.my_plan[new_name] = upd_data
+                    st.rerun()
+            if c_d.button("Tag löschen", key=f"del_{d_key}"):
                 if len(st.session_state.my_plan) > 1:
                     st.session_state.my_plan.pop(d_key)
                     st.rerun()
@@ -139,3 +115,34 @@ with tab_plan:
     if st.button("Neuen Trainingstag hinzufügen"):
         st.session_state.my_plan["Neuer Tag"] = [{"name": "Neue Übung", "sets": [3] * st.session_state.cycle_weeks}]
         st.rerun()
+
+# --- TAB 3: DATEN-VERWALTUNG ---
+with tab_data:
+    st.header("Daten Import & Export")
+    
+    uploaded_csv = st.file_uploader("Excel-Import (CSV) hochladen", type=["csv"])
+    if uploaded_csv is not None:
+        if st.button("Import bestätigen"):
+            try:
+                df_import = pd.read_csv(uploaded_csv, sep=";")
+                if not df_import.empty:
+                    for _, row in df_import.iterrows():
+                        l_key = f"{row['Woche']}_{row['Tag']}_{row['Übung']}_{row['Satz']}"
+                        st.session_state.training_logs[l_key] = {"kg": float(row["KG"]), "r": int(row["Reps"]), "rir": int(row["RIR"]), "p": int(row["Pain"])}
+                st.success("Daten erfolgreich importiert!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Fehler beim Import: {e}. Bitte stelle sicher, dass es die von hier exportierte CSV-Datei ist.")
+
+    st.divider()
+    
+    if st.session_state.training_logs:
+        exp_list = []
+        for k, v in st.session_state.training_logs.items():
+            p = k.split("_")
+            if len(p) >= 4:
+                exp_list.append({"Woche": p[0], "Tag": p[1], "Übung": p[2], "Satz": p[3], "KG": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
+        df = pd.DataFrame(exp_list)
+        csv = df.to_csv(index=False, sep=";", encoding="utf-8-sig")
+        st.download_button("Excel-Export (CSV) herunterladen", data=csv, file_name="training_export.csv", mime="text/csv")
+        st.dataframe(df, use_container_width=True)
