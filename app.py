@@ -6,12 +6,12 @@ st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 
 # --- INITIALISIERUNG ---
 if 'cycle_weeks' not in st.session_state: st.session_state.cycle_weeks = 4
-if 'my_plan' not in st.session_state: st.session_state.my_plan = {"Tag A": [{"name": "Kniebeugen", "sets": [3] * st.session_state.cycle_weeks}, {"name": "Bankdrücken", "sets": [3] * st.session_state.cycle_weeks}]}
+if 'my_plan' not in st.session_state: st.session_state.my_plan = {"Tag A": [{"name": "Kniebeugen", "sets": [3] * st.session_state.cycle_weeks, "reps": [10] * st.session_state.cycle_weeks}, {"name": "Bankdrücken", "sets": [3] * st.session_state.cycle_weeks, "reps": [10] * st.session_state.cycle_weeks}]}
 if 'training_logs' not in st.session_state: st.session_state.training_logs = {}
 if 'device_settings' not in st.session_state: st.session_state.device_settings = {}
 
 # --- TABS ---
-tab_train, tab_plan, tab_data = st.tabs(["Training", "Planer", "Daten-Verwaltung"])
+tab_train, tab_plan, tab_data, tab_calendar = st.tabs(["Training", "Planer", "Daten-Verwaltung", "Historie"])
 
 # --- TAB 1: TRAINING ---
 with tab_train:
@@ -30,13 +30,16 @@ with tab_train:
 
         for i, ex_data in enumerate(current_exercises):
             name = ex_data["name"]
-            sets_list = ex_data["sets"]
+            sets_list = ex_data.get("sets", [3] * st.session_state.cycle_weeks)
+            reps_list = ex_data.get("reps", [10] * st.session_state.cycle_weeks)
             
             if not isinstance(sets_list, list): sets_list = [sets_list] * st.session_state.cycle_weeks
+            if not isinstance(reps_list, list): reps_list = [reps_list] * st.session_state.cycle_weeks
             
             c_sets = sets_list[w_idx] if w_idx < len(sets_list) else sets_list[-1]
+            c_reps = reps_list[w_idx] if w_idx < len(reps_list) else reps_list[-1]
             
-            st.subheader(f"{i+1}. {name} ({c_sets} Sätze)")
+            st.subheader(f"{i+1}. {name} ({c_sets} Sätze | Ziel: {c_reps} Reps)")
             
             c_n1, c_n2 = st.columns(2)
             with c_n1:
@@ -52,10 +55,10 @@ with tab_train:
                 s_cols = st.columns([1, 2, 2, 2, 3])
                 s_cols[0].write(f"**{s}**")
                 l_key = f"{w_label}_{selected_day}_{name}_{s}"
-                cur_l = st.session_state.training_logs.get(l_key, {"kg": 20.0, "r": 10, "rir": 2, "p": 0})
+                cur_l = st.session_state.training_logs.get(l_key, {"kg": 20.0, "r": c_reps, "rir": 2, "p": 0})
                 
                 r_kg = s_cols[1].number_input("kg", value=float(cur_l.get("kg", 20.0)), step=1.25, key=f"w_in_{l_key}", label_visibility="collapsed")
-                r_r = s_cols[2].number_input("r", value=int(cur_l.get("r", 10)), step=1, key=f"r_in_{l_key}", label_visibility="collapsed")
+                r_r = s_cols[2].number_input("r", value=int(cur_l.get("r", c_reps)), step=1, key=f"r_in_{l_key}", label_visibility="collapsed")
                 r_rir = s_cols[3].number_input("rir", value=int(cur_l.get("rir", 2)), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
                 r_p = s_cols[4].selectbox("p", options=[0, 1, 2], index=int(cur_l.get("p", 0)), key=f"p_in_{l_key}", label_visibility="collapsed")
                 
@@ -82,29 +85,35 @@ with tab_plan:
             upd_data = []
             
             for n in names:
-                st.write(f"**Sätze pro Woche für: {n}**")
+                st.write(f"**Sätze & Reps für: {n}**")
                 o_sets = [3] * st.session_state.cycle_weeks
+                o_reps = [10] * st.session_state.cycle_weeks
                 for e in cur_exs:
                     if e["name"] == n:
-                        if isinstance(e["sets"], list): o_sets = e["sets"]
-                        else: o_sets = [e["sets"]] * st.session_state.cycle_weeks
+                        if "sets" in e and isinstance(e["sets"], list): o_sets = e["sets"]
+                        elif "sets" in e: o_sets = [e["sets"]] * st.session_state.cycle_weeks
+                        if "reps" in e and isinstance(e["reps"], list): o_reps = e["reps"]
+                        elif "reps" in e: o_reps = [e["reps"]] * st.session_state.cycle_weeks
                 
                 w_cols = st.columns(st.session_state.cycle_weeks)
                 n_sets = []
+                n_reps = []
                 for w in range(st.session_state.cycle_weeks):
-                    v = o_sets[w] if w < len(o_sets) else o_sets[-1]
-                    s_v = w_cols[w].number_input(f"W{w+1}", 1, 15, int(v), key=f"s_{d_key}_{n}_{w}")
+                    v_s = o_sets[w] if w < len(o_sets) else o_sets[-1]
+                    v_r = o_reps[w] if w < len(o_reps) else o_reps[-1]
+                    s_v = w_cols[w].number_input(f"W{w+1} Sätze", 1, 15, int(v_s), key=f"s_{d_key}_{n}_{w}")
+                    r_v = w_cols[w].number_input(f"W{w+1} Reps", 1, 100, int(v_r), key=f"r_{d_key}_{n}_{w}")
                     n_sets.append(s_v)
-                upd_data.append({"name": n, "sets": n_sets})
+                    n_reps.append(r_v)
+                upd_data.append({"name": n, "sets": n_sets, "reps": n_reps})
                 st.divider()
             
             st.session_state.my_plan[d_key] = upd_data
             
             c_s, c_d = st.columns(2)
             if c_s.button("Tag umbenennen", key=f"save_{d_key}"):
-                if new_name != d_key:
-                    st.session_state.my_plan.pop(d_key)
-                    st.session_state.my_plan[new_name] = upd_data
+                if new_name != d_key and new_name.strip() != "":
+                    st.session_state.my_plan[new_name] = st.session_state.my_plan.pop(d_key)
                     st.rerun()
             if c_d.button("Tag löschen", key=f"del_{d_key}"):
                 if len(st.session_state.my_plan) > 1:
@@ -113,7 +122,7 @@ with tab_plan:
 
     st.divider()
     if st.button("Neuen Trainingstag hinzufügen"):
-        st.session_state.my_plan["Neuer Tag"] = [{"name": "Neue Übung", "sets": [3] * st.session_state.cycle_weeks}]
+        st.session_state.my_plan["Neuer Tag"] = [{"name": "Neue Übung", "sets": [3] * st.session_state.cycle_weeks, "reps": [10] * st.session_state.cycle_weeks}]
         st.rerun()
 
 # --- TAB 3: DATEN-VERWALTUNG ---
@@ -146,3 +155,28 @@ with tab_data:
         csv = df.to_csv(index=False, sep=";", encoding="utf-8-sig")
         st.download_button("Excel-Export (CSV) herunterladen", data=csv, file_name="training_export.csv", mime="text/csv")
         st.dataframe(df, use_container_width=True)
+
+# --- TAB 4: HISTORIE ---
+with tab_calendar:
+    st.header("Trainingshistorie")
+    
+    if not st.session_state.training_logs:
+        st.info("Noch keine Trainingsdaten vorhanden.")
+    else:
+        hist_list = []
+        for k, v in st.session_state.training_logs.items():
+            p = k.split("_")
+            if len(p) >= 4:
+                hist_list.append({"Woche": p[0], "Tag": p[1], "Übung": p[2], "Satz": p[3], "KG": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
+        
+        df_hist = pd.DataFrame(hist_list)
+        
+        wochen = df_hist["Woche"].unique()
+        for woche in sorted(wochen):
+            with st.expander(f"Ansicht: {woche}", expanded=False):
+                df_woche = df_hist[df_hist["Woche"] == woche]
+                tage = df_woche["Tag"].unique()
+                for tag in sorted(tage):
+                    st.markdown(f"**{tag}**")
+                    df_tag = df_woche[df_woche["Tag"] == tag]
+                    st.dataframe(df_tag[["Übung", "Satz", "KG", "Reps", "RIR", "Pain"]], use_container_width=True, hide_index=True)
