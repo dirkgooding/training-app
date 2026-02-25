@@ -13,6 +13,10 @@ if 'my_plan' not in st.session_state:
 if 'device_settings' not in st.session_state:
     st.session_state.device_settings = {}
 
+# NEU: Variable für die Zyklus-Dauer (Initial 12 Wochen)
+if 'cycle_weeks' not in st.session_state:
+    st.session_state.cycle_weeks = 12
+
 # --- NAVIGATION ---
 tab_train, tab_plan = st.tabs(["🏋️ Training", "⚙️ Planer & Einstellungen"])
 
@@ -20,7 +24,8 @@ tab_train, tab_plan = st.tabs(["🏋️ Training", "⚙️ Planer & Einstellunge
 with tab_train:
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
-        woche = st.selectbox("📅 Woche:", [f"Woche {i}" for i in range(1, 13)])
+        # GEÄNDERT: Nutzt jetzt die Variable cycle_weeks statt der festen 13
+        woche = st.selectbox("📅 Woche:", [f"Woche {i}" for i in range(1, st.session_state.cycle_weeks + 1)])
     with col_nav2:
         # Hier nutzen wir die Namen aus dem Planer
         selected_day = st.selectbox("📋 Tag wählen:", list(st.session_state.my_plan.keys()))
@@ -56,6 +61,15 @@ with tab_train:
 # --- TAB 2: DER PLANER (Hier definierst du alles) ---
 with tab_plan:
     st.header("Konfiguration deines Trainings")
+    
+    # NEU: Bereich für die Zyklus-Einstellung
+    st.subheader("📅 Zyklus-Dauer")
+    new_weeks = st.number_input("Wie viele Wochen soll ein Zyklus dauern?", min_value=1, max_value=52, value=st.session_state.cycle_weeks)
+    if new_weeks != st.session_state.cycle_weeks:
+        st.session_state.cycle_weeks = new_weeks
+        st.rerun()
+    st.divider()
+
     st.info("Hier kannst du deine Tage benennen und festlegen, welche Übungen du machst.")
 
     # 1. Tage verwalten
