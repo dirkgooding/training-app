@@ -60,4 +60,148 @@ with tab_train:
                 old_dev = st.session_state.device_settings.get(name, "")
                 st.session_state.device_settings[name] = st.text_input(
                     f"Einstellung", 
-                    value=old
+                    value=old_dev, 
+                    key=f"dev_{name}_{selected_day}"
+                )
+            with c_n2:
+                st.text_input(
+                    f"Notiz", 
+                    key=f"note_{name}_{w_label}_{selected_day}"
+                )
+
+            cols = st.columns([1, 2, 2, 2, 3])
+            cols[0].caption("Set")
+            cols[1].caption("KG")
+            cols[2].caption("Reps")
+            cols[3].caption("RIR")
+            cols[4].caption("Pain")
+
+            for s in range(1, c_sets + 1):
+                s_cols = st.columns([1, 2, 2, 2, 3])
+                s_cols[0].write(f"**{s}**")
+                l_key = f"{w_label}_{selected_day}_{name}_{s}"
+                cur_l = st.session_state.training_logs.get(
+                    l_key, 
+                    {"kg": 20.0, "r": 10, "rir": 2, "p": 0}
+                )
+                
+                r_kg = s_cols[1].number_input(
+                    "kg", 
+                    value=float(cur_l.get("kg", 20.0)), 
+                    step=1.25, 
+                    key=f"w_in_{l_key}", 
+                    label_visibility="collapsed"
+                )
+                r_r = s_cols[2].number_input(
+                    "r", 
+                    value=int(cur_l.get("r", 10)), 
+                    step=1, 
+                    key=f"r_in_{l_key}", 
+                    label_visibility="collapsed"
+                )
+                r_rir = s_cols[3].number_input(
+                    "rir", 
+                    value=int(cur_l.get("rir", 2)), 
+                    step=1, 
+                    key=f"rir_in_{l_key}", 
+                    label_visibility="collapsed"
+                )
+                r_p = s_cols[4].selectbox(
+                    "p", 
+                    options=[0, 1, 2], 
+                    index=int(cur_l.get("p", 0)), 
+                    key=f"p_in_{l_key}", 
+                    label_visibility="collapsed"
+                )
+                
+                st.session_state.training_logs[l_key] = {
+                    "kg": r_kg, 
+                    "r": r_r, 
+                    "rir": r_rir, 
+                    "p": r_p
+                }
+            st.divider()
+
+# --- TAB 2: PLANER ---
+with tab_plan:
+    st.header("Daten-Verwaltung")
+    
+    uploaded_csv = st.file_uploader("Excel-Import (CSV) hochladen", type=["csv"])
+    if uploaded_csv is not None:
+        try:
+            df_import = pd.read_csv(uploaded_csv, sep=";")
+            for _, row in df_import.iterrows():
+                l_key = f"{row['Woche']}_{row['Tag']}_{row['Übung']}_{row['Satz']}"
+                st.session_state.training_logs[l_key] = {
+                    "kg": float(row["KG"]),
+                    "r": int(row["Reps"]),
+                    "rir": int(row["RIR"]),
+                    "p": int(row["Pain"])
+                }
+            st.success("Daten erfolgreich importiert!")
+        except Exception as e:
+            st.error(f"Fehler beim Import: {e}. Bitte stelle sicher, dass es die von hier exportierte CSV-Datei ist.")
+
+    if st.session_state.training_logs:
+        exp_list = []
+        for k, v in st.session_state.training_logs.items():
+            p = k.split("_")
+            if len(p) >= 4:
+                exp_list.append({
+                    "Woche": p[0], 
+                    "Tag": p[1], 
+                    "Übung": p[2], 
+                    "Satz": p[3], 
+                    "KG": v["kg"], 
+                    "Reps": v["r"], 
+                    "RIR": v["rir"], 
+                    "Pain": v["p"]
+                })
+        df = pd.DataFrame(exp_list)
+        csv = df.to_csv(index=False, sep=";", encoding="utf-8-sig")
+        st.download_button(
+            "Excel-Export (CSV)", 
+            data=csv, 
+            file_name="training_export.csv", 
+            mime="text/csv"
+        )
+        st.dataframe(df, use_container_width=True)
+
+    st.divider()
+    st.header("Konfiguration")
+    
+    new_w = st.number_input(
+        "Zyklus-Dauer (Wochen):", 
+        min_value=1, 
+        max_value=12, 
+        value=st.session_state.cycle_weeks
+    )
+    if new_w != st.session_state.cycle_weeks:
+        st.session_state.cycle_weeks = new_w
+        st.rerun()
+
+    for d_key in list(st.session_state.my_plan.keys()):
+        with st.expander(f"Bearbeite: {d_key}", expanded=True):
+            new_name = st.text_input("Name des Tages:", value=d_key, key=f"ren_{d_key}")
+            cur_exs = st.session_state.my_plan[d_key]
+            ex_txt = "\n".join([e["name"] for e in cur_exs])
+            new_ex_txt = st.text_area("Übungen (eine pro Zeile):", value=ex_txt, key=f"edit_{d_key}")
+            
+            names = [n.strip() for n in new_ex_txt.split("\n") if n.strip()]
+            upd_data = []
+            
+            for n in names:
+                st.write(f"**Sätze pro Woche für: {n}**")
+                o_sets = [3] * st.session_state.cycle_weeks
+                for e in cur_exs:
+                    if e["name"] == n:
+                        if isinstance(e["sets"], list):
+                            o_sets = e["sets"]
+                        else:
+                            o_sets = [e["sets"]] * st.session_state.cycle_weeks
+                
+                w_cols = st.columns(st.session_state.cycle_weeks)
+                n_sets = []
+                for w in range(st.session_state.cycle_weeks):
+                    v = o_sets[w] if w < len(o_sets) else o_sets[-1]
+                    s_v = w_cols[w].number_input(
