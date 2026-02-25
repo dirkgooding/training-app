@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 
-# --- 1. DATENSPEICHERUNG (Initialisierung) ---
+# --- 1. DATENSPEICHERUNG (Session State) ---
 if 'my_plan' not in st.session_state:
     st.session_state.my_plan = {
         "Tag A": {"exercises": ["Kniebeugen", "Bankdrücken"], "sets": 3},
@@ -27,7 +27,7 @@ with tab_train:
     with col_nav2:
         selected_day = st.selectbox("📋 Tag wählen:", list(st.session_state.my_plan.keys()))
 
-    # Daten abrufen
+    # Sicherer Zugriff auf die Daten des gewählten Tages
     day_data = st.session_state.my_plan[selected_day]
     current_exercises = day_data["exercises"]
     num_sets = day_data["sets"]
@@ -49,10 +49,11 @@ with tab_train:
         cols = st.columns([1, 2, 2, 2, 3])
         cols[0].caption("Set"); cols[1].caption("KG"); cols[2].caption("Reps"); cols[3].caption("RIR"); cols[4].caption("Pain")
 
-        # Dynamische Sätze
+        # Dynamische Anzahl an Sätzen basierend auf Planer
         for s in range(1, num_sets + 1):
             s_cols = st.columns([1, 2, 2, 2, 3])
             s_cols[0].write(f"**{s}**")
+            # Alle Klammern sind hier korrekt geschlossen
             s_cols[1].number_input("kg", value=20.0, step=1.25, key=f"w_{ex}_{s}_{woche}_{selected_day}", label_visibility="collapsed")
             s_cols[2].number_input("r", value=10, step=1, key=f"r_{ex}_{s}_{woche}_{selected_day}", label_visibility="collapsed")
             s_cols[3].number_input("rir", value=2, step=1, key=f"rir_{ex}_{s}_{woche}_{selected_day}", label_visibility="collapsed")
@@ -71,23 +72,27 @@ with tab_plan:
     
     st.divider()
 
+    # Tage verwalten
     for day_key in list(st.session_state.my_plan.keys()):
         with st.expander(f"Bearbeite: {day_key}", expanded=True):
-            new_day_name = st.text_input("Name:", value=day_key, key=f"rename_{day_key}")
+            # Name des Tages
+            new_day_name = st.text_input("Name des Tages:", value=day_key, key=f"rename_{day_key}")
             
+            # Sätze für diesen Tag einstellen
             current_sets = st.session_state.my_plan[day_key]["sets"]
-            new_sets = st.number_input(f"Sätze pro Übung:", min_value=1, max_value=10, value=current_sets, key=f"sets_{day_key}")
+            new_sets = st.number_input("Sätze pro Übung:", min_value=1, max_value=10, value=current_sets, key=f"sets_{day_key}")
             
+            # Übungen bearbeiten
             ex_list = st.session_state.my_plan[day_key]["exercises"]
             new_ex_str = st.text_area("Übungen (eine pro Zeile):", value="\n".join(ex_list), key=f"ex_edit_{day_key}")
             
             col_save, col_del = st.columns(2)
             with col_save:
                 if st.button(f"Speichern", key=f"btn_save_{day_key}"):
-                    # Alten Key entfernen, falls Name geändert wurde
+                    # Falls Name geändert wurde: Alten Eintrag entfernen
                     if new_day_name != day_key:
                         st.session_state.my_plan.pop(day_key)
-                    # Neuen/Aktualisierten Eintrag speichern
+                    # Aktualisierten Tag speichern
                     st.session_state.my_plan[new_day_name] = {
                         "exercises": [e.strip() for e in new_ex_str.split("\n") if e.strip()],
                         "sets": new_sets
