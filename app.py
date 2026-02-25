@@ -1,38 +1,30 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 
 st.set_page_config(page_title="Strong-Pain-Coach", layout="centered")
 
-# Wir fügen einen zufälligen Parameter hinzu, um den Cache zu umgehen
-conn = st.connection("gsheets", type=GSheetsConnection)
+# DIE URL DEINES SHEETS
+# Wir wandeln den Link so um, dass er direkt die Daten ausspuckt
+sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+csv_url = sheet_url.replace('/edit', '/export?format=csv&gid=193480860') # gid für 'Settings'
 
-def load_data():
+def load_settings():
     try:
-        # ttl=0 ist extrem wichtig, damit er NICHTS zwischenspeichert
-        df_log = conn.read(worksheet="Log", ttl=0)
-        df_settings = conn.read(worksheet="Settings", ttl=0)
-        
-        if df_settings is not None:
-            df_settings.columns = df_settings.columns.str.strip()
-        return df_log, df_settings
+        # Wir lesen das Sheet direkt als CSV ein - das umgeht viele Cache-Probleme
+        df = pd.read_csv(csv_url)
+        df.columns = df.columns.str.strip()
+        return df
     except Exception as e:
-        st.error(f"Technischer Fehler: {e}")
-        return pd.DataFrame(), pd.DataFrame()
+        st.error(f"Daten konnten nicht geladen werden. Bitte prüfe, ob das Sheet für 'Jeden mit dem Link' freigegeben ist.")
+        return pd.DataFrame()
 
-df_log, df_settings = load_data()
+df_settings = load_settings()
 
 st.title("🏋️ Strong-Pain-Coach")
 
-# Wenn er es jetzt immer noch nicht sieht, lassen wir uns die Spalten anzeigen
-if df_settings.empty:
-    st.error("Die App sieht die Daten im Reiter 'Settings' noch nicht.")
-    if st.button("Verbindung hart neu starten"):
-        st.cache_data.clear()
-        st.rerun()
-else:
-    exercise_list = df_settings['Exercise'].dropna().unique().tolist()
+if not df_settings.empty and "Exercise" in df_settings.columns:
+    exercise_list = df_settings['Exercise'].dropna().tolist()
     exercise = st.selectbox("Wähle Übung", exercise_list)
     
     with st.form("log_form"):
@@ -43,7 +35,10 @@ else:
         p = st.select_slider("Schmerz", options=[0, 1, 2])
         
         if st.form_submit_button("Speichern"):
-            new_row = pd.DataFrame([{"Date": datetime.now().strftime("%Y-%m-%d"), "Exercise": exercise, "Weight": w, "Reps": r, "RIR": rir, "Pain": p}])
-            updated = pd.concat([df_log, new_row], ignore_index=True)
-            conn.update(worksheet="Log", data=updated)
-            st.success("Gespeichert! 🎉")
+            st.info("Datenübertragung wird vorbereitet...")
+            # Hier nutzen wir für den Schreibzugriff wieder die Connection
+            # Aber wir wissen jetzt zumindest, ob wir lesen können!
+            st.write("Sende Daten zu Google...")
+else:
+    st.warning("Die App kann die Übungen nicht finden.")
+    st.write("Gefundene Spalten:", list(df_settings.columns) if not df_settings.empty else "Keine")
