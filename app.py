@@ -1,10 +1,9 @@
 import streamlit as st
-import pandas as pd
 
-# 'wide' für optimale Smartphone-Darstellung
+# 'wide' für bessere Lesbarkeit der Tabellen
 st.set_page_config(page_title="Strong-Pain-Coach", layout="wide")
 
-# 1. DATENSTRUKTUR (Dein fester Plan)
+# 1. DEIN TRAININGSPLAN (Hierarchie: Tag -> Übungen)
 if 'my_plan' not in st.session_state:
     st.session_state.my_plan = {
         "Tag A (Push)": ["Bankdrücken", "Schulterdrücken", "Trizeps Dips"],
@@ -16,31 +15,32 @@ if 'my_plan' not in st.session_state:
 if 'device_settings' not in st.session_state:
     st.session_state.device_settings = {}
 
-st.title("🏋️ Trainings-Steuerung")
+st.title("🏋️ Trainings-Fokus")
 
-# --- HIERARCHIE: ERST TAG, DANN WOCHE ---
-col_setup1, col_setup2 = st.columns(2)
+# --- NAVIGATION: WOCHE & TAG ---
+col_nav1, col_nav2 = st.columns(2)
 
-with col_setup1:
-    # Schritt 1: Welches Programm?
-    selected_day = st.selectbox("📋 Welchen Tag trainierst du heute?", list(st.session_state.my_plan.keys()))
-    current_exercises = st.session_state.my_plan[selected_day]
+with col_nav1:
+    woche = st.select_slider(
+        "📅 Woche:", 
+        options=[f"Woche {i}" for i in range(1, 13)]
+    )
 
-with col_setup2:
-    # Schritt 2: In welcher Woche des Zyklus bist du?
-    woche = st.selectbox("📅 In welcher Woche (Zyklus)?", [f"Woche {i}" for i in range(1, 13)])
+with col_nav2:
+    selected_day = st.selectbox("📋 Welchen Tag heute?", list(st.session_state.my_plan.keys()))
 
 st.markdown(f"## {selected_day} <small>({woche})</small>", unsafe_allow_html=True)
 st.divider()
 
-# --- DAS DASHBOARD ---
+# --- DIE ÜBUNGEN DES TAGES ---
+current_exercises = st.session_state.my_plan[selected_day]
+
 for i, ex in enumerate(current_exercises):
+    # Header mit Sortier-Pfeilen
+    col_h, col_m = st.columns([8, 2])
+    col_h.subheader(f"{i+1}. {ex}")
     
-    # Übungs-Header mit Sortierung
-    col_header, col_move = st.columns([7, 3])
-    with col_header:
-        st.subheader(f"{i+1}. {ex}")
-    with col_move:
+    with col_m:
         up, down = st.columns(2)
         if up.button("▲", key=f"up_{ex}_{i}") and i > 0:
             current_exercises[i], current_exercises[i-1] = current_exercises[i-1], current_exercises[i]
@@ -50,17 +50,18 @@ for i, ex in enumerate(current_exercises):
             st.rerun()
 
     # NOTIZFELDER
-    col_note1, col_note2 = st.columns(2)
-    with col_note1:
-        # IMMER DA: Geräte-Einstellung (Persistent über alle Wochen)
+    col_n1, col_n2 = st.columns(2)
+    with col_n1:
+        # Persistent: Bleibt immer
         old_val = st.session_state.device_settings.get(ex, "")
-        new_val = st.text_input(f"⚙️ Einstellung (fest)", value=old_val, key=f"device_{ex}", help="Bleibt für diese Übung immer gespeichert.")
-        st.session_state.device_settings[ex] = new_val
-    with col_note2:
-        # NUR FÜR DIESE WOCHE: Notiz zum aktuellen Training
-        st.text_input(f"📝 Notiz ({woche})", key=f"session_note_{ex}_{woche}", placeholder="Gefühl, Schmerz-Details...")
+        st.session_state.device_settings[ex] = st.text_input(
+            f"⚙️ Einstellung (fest)", value=old_val, key=f"dev_{ex}"
+        )
+    with col_n2:
+        # Session: Nur für diese Woche
+        st.text_input(f"📝 Notiz {woche}", key=f"note_{ex}_{woche}")
 
-    # DIE SATZ-MATRIX
+    # SATZ-MATRIX
     cols = st.columns([1, 2, 2, 2, 3])
     cols[0].caption("Set")
     cols[1].caption("KG")
@@ -71,7 +72,6 @@ for i, ex in enumerate(current_exercises):
     for s in range(1, 4):
         s_cols = st.columns([1, 2, 2, 2, 3])
         s_cols[0].write(f"**{s}**")
-        # Alle Keys enthalten die Woche, damit die Daten pro Woche getrennt bleiben
         s_cols[1].number_input("kg", value=20.0, step=1.25, key=f"w_{ex}_{s}_{woche}", label_visibility="collapsed")
         s_cols[2].number_input("r", value=10, step=1, key=f"r_{ex}_{s}_{woche}", label_visibility="collapsed")
         s_cols[3].number_input("rir", value=2, step=1, key=f"rir_{ex}_{s}_{woche}", label_visibility="collapsed")
@@ -79,7 +79,7 @@ for i, ex in enumerate(current_exercises):
     
     st.divider()
 
-# ABSCHLUSS
-if st.button("✅ Training beenden & Speichern", use_container_width=True):
+# SPEICHERN
+if st.button("✅ Trainingstag abschließen", use_container_width=True):
     st.balloons()
-    st.success(f"Training abgeschlossen! {selected_day} in {woche} wurde gesichert.")
+    st.success(f"Daten für {selected_day} ({woche}) gesichert!")
