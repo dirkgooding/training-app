@@ -12,6 +12,7 @@ if 'deload_intensity' not in st.session_state: st.session_state.deload_intensity
 if 'reduce_sets_deload' not in st.session_state: st.session_state.reduce_sets_deload = False
 if 'rest_defaults' not in st.session_state: st.session_state.rest_defaults = {}
 
+# Standard Progression Vorlagen
 def_prog_weight = {
     "type": "Linear Weight", 
     "inc_weight": 1.25, "inc_reps": 1, "inc_sec": 5, 
@@ -20,10 +21,21 @@ def_prog_weight = {
     "start_weight": 20.0
 }
 
+def_prog_reps = {**def_prog_weight, "type": "Linear Reps", "inc_weight": 1.0, "start_reps": 8}
+def_prog_time = {**def_prog_weight, "type": "Linear Time", "inc_weight": 5.0, "start_time": 30}
+def_prog_double = {**def_prog_weight, "type": "Double Progression"}
+
+# Plan mit den Testübungen initialisieren
 if 'my_plan' not in st.session_state: 
     st.session_state.my_plan = {
-        "Day 1": [{"name": "Squats", "sets": [3]*12, "reps": [10]*12, "progression": def_prog_weight.copy()}],
-        "Day 2": [{"name": "Bench Press", "sets": [3]*12, "reps": [10]*12, "progression": def_prog_weight.copy()}]
+        "Day 1": [
+            {"name": "Linear Weight Exercise", "sets": [3]*12, "reps": [10]*12, "progression": def_prog_weight.copy()}, 
+            {"name": "Linear Reps Exercise", "sets": [3]*12, "reps": [8]*12, "progression": def_prog_reps.copy()}
+        ], 
+        "Day 2": [
+            {"name": "Linear Time Exercise", "sets": [3]*12, "reps": [30]*12, "progression": def_prog_time.copy()}, 
+            {"name": "Double Progression Exercise", "sets": [3]*12, "reps": [12]*12, "progression": def_prog_double.copy()}
+        ]
     }
 
 if 'training_logs' not in st.session_state: st.session_state.training_logs = {}
@@ -75,7 +87,7 @@ with tab_work:
                 default_rest = st.session_state.rest_defaults.get(ex["name"], "1:30")
                 cur_l = st.session_state.training_logs.get(l_key, {"kg": start_w, "r": c_reps, "rir": 2, "p": 0, "rest": default_rest, "done": False, "type": str(s), "ts": ""})
                 
-                # Dropdown mit kursivem Warmup
+                # Unicode Kursiv für Warmup
                 s_type_options = [str(s), "𝘞", "𝘋", "𝘍", "𝘙/𝘗", "𝘔"]
                 r_type = s_cols[0].selectbox("Type", s_type_options, index=s_type_options.index(cur_l.get("type", str(s))) if cur_l.get("type") in s_type_options else 0, key=f"type_{l_key}", label_visibility="collapsed")
                 
@@ -143,7 +155,8 @@ with tab_progr:
                     match = next((e for e in st.session_state.my_plan[d_key] if e["name"] == n), None)
                     o_prog = match["progression"].copy() if match else def_prog_weight.copy()
                     
-                    p_type = st.selectbox("Progression Model", ["Linear Weight", "Linear Reps", "Linear Time", "Double Progression"], index=0, key=f"ptype_{d_key}_{n}")
+                    prog_options = ["Linear Weight", "Linear Reps", "Linear Time", "Double Progression"]
+                    p_type = st.selectbox("Progression Model", prog_options, index=prog_options.index(o_prog["type"]) if o_prog["type"] in prog_options else 0, key=f"ptype_{d_key}_{n}")
                     
                     c1, c2, c3, c4 = st.columns(4)
                     g_s = c1.number_input("Sets", 1, 15, int(o_prog.get("glob_sets", 3)), key=f"gs_{d_key}_{n}")
