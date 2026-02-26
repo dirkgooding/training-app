@@ -18,15 +18,16 @@ def_prog_linear = {
     "min_reps": 8, "max_reps": 12, "glob_sets": 3, "glob_reps": 10
 }
 
+# Voreinstellung exakt wie im Screenshot
 if 'my_plan' not in st.session_state: 
     st.session_state.my_plan = {
         "Day 1": [
-            {"name": "Test 1", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_linear.copy()}, 
-            {"name": "Test 2", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_linear.copy()}
+            {"name": "Linear Weight Exercise", "sets": [3]*4, "reps": [10]*4, "progression": def_prog_linear.copy()}, 
+            {"name": "Linear Reps Exercise", "sets": [3]*4, "reps": [10]*4, "progression": {**def_prog_linear, "type": "Linear Reps"}}
         ], 
         "Day 2": [
-            {"name": "Test 3", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_linear.copy()}, 
-            {"name": "Test 4", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_linear.copy()}
+            {"name": "Linear Time Exercise", "sets": [3]*4, "reps": [10]*4, "progression": {**def_prog_linear, "type": "Linear Time"}}, 
+            {"name": "Double Progression Exercise", "sets": [3]*4, "reps": [10]*4, "progression": {**def_prog_linear, "type": "Double Progression"}}
         ]
     }
 
@@ -99,9 +100,9 @@ with tab_plan:
     
     row2_col1, row2_col2 = st.columns(2)
     with row2_col1:
-        st.session_state.deload_intensity = st.slider("Percentage of training weight for deload week (%)", 10, 100, st.session_state.deload_intensity, step=10)
+        st.session_state.deload_intensity = st.slider("Percentage of training weight for deload week (%)", 50, 100, st.session_state.deload_intensity, step=10)
     with row2_col2:
-        st.write("") # Spacer
+        st.write("") 
         st.session_state.reduce_sets_deload = st.checkbox("Reduce number of sets by 50%", 
             value=st.session_state.reduce_sets_deload,
             help="Halving the sets further reduces training volume to maximize recovery while maintaining movement quality.")
@@ -141,7 +142,7 @@ with tab_plan:
                     for w in range(st.session_state.cycle_weeks):
                         old_s = match["sets"][w] if (match and w < len(match["sets"])) else 3
                         old_r = match["reps"][w] if (match and w < len(match["reps"])) else 10
-                        s_v = w_cols[w].number_input(f"W{w+1} Sets", 1, 15, int(old_s), key=f"es_{d_key}_{n}_{w}")
+                        s_v = w_cols[w].number_input(f"W{w+1} sets", 1, 15, int(old_s), key=f"es_{d_key}_{n}_{w}")
                         r_v = w_cols[w].number_input(f"W{w+1} Goal", 1, 300, int(old_r), key=f"er_{d_key}_{n}_{w}")
                         n_sets.append(s_v); n_reps.append(r_v)
                 else:
@@ -152,7 +153,7 @@ with tab_plan:
                         o_prog["max_reps"] = c3.number_input("Maximum Reps", 1, 300, int(o_prog.get("max_reps", 12)), key=f"maxr_{d_key}_{n}")
                         n_reps = [o_prog["max_reps"]] * st.session_state.cycle_weeks
                     else:
-                        unit_label = "Set your target reps"
+                        unit_label = "Set your target time (in seconds, e.g. 90 = 1:30)" if "Time" in p_type else "Set your target reps"
                         o_prog["glob_reps"] = c2.number_input(unit_label, 1, 300, int(o_prog.get("glob_reps", 10)), key=f"gr_{d_key}_{n}")
                         n_reps = [o_prog["glob_reps"]] * st.session_state.cycle_weeks
                     
@@ -176,5 +177,5 @@ with tab_plan:
         st.session_state.my_plan[f"Day {len(st.session_state.my_plan)+1}"] = []
         st.rerun()
 
-# --- TAB 3 & 4 (BLEIBEN UNVERÄNDERT) ---
-# ...
+# --- TAB 3 & 4 (Data & History) ---
+# ... (bleiben unverändert)
