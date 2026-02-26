@@ -59,7 +59,7 @@ with tab_train:
             c_n1, c_n2 = st.columns(2)
             with c_n1:
                 old_dev = st.session_state.device_settings.get(name, "")
-                st.session_state.device_settings[name] = st.text_input(f"Device Setting", value=old_dev, key=f"dev_{name}_{selected_day}")
+                st.session_state.device_settings[name] = st.text_input(f"Exercise Setup", value=old_dev, key=f"dev_{name}_{selected_day}")
             with c_n2:
                 st.text_input(f"Note", key=f"note_{name}_{w_label}_{selected_day}")
 
@@ -140,7 +140,7 @@ with tab_plan:
                     n_reps.append(r_v)
                 
                 with st.expander(f"⚙️ Progression & Deload for {n}"):
-                    type_options = ["Linear (Weight Only)", "Double Progression (Weight & Reps)", "Time (Seconds)"]
+                    type_options = ["Linear (Weight Only)", "Double Progression (Weight & Reps)", "Reps Only", "Time (Seconds)"]
                     current_type = o_prog.get("type", "Linear (Weight Only)")
                     if current_type not in type_options: current_type = "Linear (Weight Only)"
                     
@@ -149,15 +149,19 @@ with tab_plan:
                     p_col1, p_col2, p_col3 = st.columns(3)
                     
                     if p_type == "Linear (Weight Only)":
-                        i_kg = p_col1.number_input("+ Increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), step=1.25, key=f"pkg_{d_key}_{n}")
+                        i_kg = p_col1.number_input("Weight Increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), step=1.25, key=f"pkg_{d_key}_{n}")
                         i_r = 0
                         i_sec = 0
                     elif p_type == "Double Progression (Weight & Reps)":
-                        i_kg = p_col1.number_input("+ Increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), step=1.25, key=f"pkg_{d_key}_{n}")
-                        i_r = p_col2.number_input("+ Reps", 0, 20, int(o_prog.get("inc_reps", 1)), step=1, key=f"prep_{d_key}_{n}")
+                        i_kg = p_col1.number_input("Weight Increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), step=1.25, key=f"pkg_{d_key}_{n}")
+                        i_r = p_col2.number_input("Rep Increment", 0, 20, int(o_prog.get("inc_reps", 1)), step=1, key=f"prep_{d_key}_{n}")
+                        i_sec = 0
+                    elif p_type == "Reps Only":
+                        i_kg = 0.0
+                        i_r = p_col1.number_input("Rep Increment", 0, 20, int(o_prog.get("inc_reps", 1)), step=1, key=f"prep_{d_key}_{n}")
                         i_sec = 0
                     else:
-                        i_sec = p_col1.number_input("+ Seconds", 0, 100, int(o_prog.get("inc_sec", 5)), step=1, key=f"psec_{d_key}_{n}")
+                        i_sec = p_col1.number_input("Time Increment", 0, 100, int(o_prog.get("inc_sec", 5)), step=1, key=f"psec_{d_key}_{n}")
                         i_kg = 0.0
                         i_r = 0
                         
