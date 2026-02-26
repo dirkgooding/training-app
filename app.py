@@ -64,60 +64,44 @@ with tab_train:
             with c_n2:
                 st.text_input(f"Note", key=f"note_{ex['name']}_{w_label}_{selected_day}")
 
-            # GEOMETRIE-TRICK FÜR PERFEKTE BÜNDIGKEIT
-            if p_type in ["Linear Time", "Linear Reps"]:
-                # 7 Spalten: 1(Set) + 1(Spacer) + 2(Input) + 1(Spacer) + 2(RIR) + 3(Pain) + 1(Done) = 11 Units
-                cols = st.columns([1, 1, 2, 1, 2, 3, 1])
-                cols[0].caption("Set")
-                cols[2].caption("Time (sec)" if p_type == "Linear Time" else "Reps")
-                cols[4].caption("RIR")
-                cols[5].caption("Pain")
-                cols[6].caption("Done")
+            # KONSISTENTES 6-SPALTEN-RASTER
+            cols = st.columns([1, 2, 2, 2, 3, 1])
+            cols[0].caption("Set")
+            cols[1].caption("Weight")
+            if p_type == "Linear Time":
+                cols[2].caption("Time (sec)")
             else:
-                # 6 Spalten: 1(Set) + 2(Weight) + 2(Reps) + 2(RIR) + 3(Pain) + 1(Done) = 11 Units
-                cols = st.columns([1, 2, 2, 2, 3, 1])
-                cols[0].caption("Set")
-                cols[1].caption("Weight")
                 cols[2].caption("Reps")
-                cols[3].caption("RIR")
-                cols[4].caption("Pain")
-                cols[5].caption("Done")
+            cols[3].caption("RIR")
+            cols[4].caption("Pain")
+            cols[5].caption("Done")
 
             start_w = ex["progression"].get("start_weight", 20.0)
 
             for s in range(1, c_sets + 1):
+                s_cols = st.columns([1, 2, 2, 2, 3, 1])
                 l_key = f"{w_label}_{selected_day}_{ex['name']}_{s}"
                 cur_l = st.session_state.training_logs.get(l_key, {"kg": start_w, "r": c_reps, "rir": 2, "p": 0, "done": False, "ts": ""})
                 
-                if p_type in ["Linear Time", "Linear Reps"]:
-                    s_cols = st.columns([1, 1, 2, 1, 2, 3, 1])
-                    s_cols[0].write(f"{s}")
-                    
-                    if p_type == "Linear Time":
-                        r_r = s_cols[2].number_input("Time", value=int(cur_l["r"]), step=5, key=f"t_in_{l_key}", label_visibility="collapsed")
-                        r_kg = float(cur_l["kg"])
-                    else:
-                        r_r = s_cols[2].number_input("Reps", value=int(cur_l["r"]), step=1, key=f"r_in_{l_key}", label_visibility="collapsed")
-                        r_kg = float(cur_l["kg"])
-                        
-                    r_rir = s_cols[4].number_input("RIR", value=int(cur_l["rir"]), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
-                    r_p = s_cols[5].selectbox("Pain", options=[0, 1, 2], index=int(cur_l["p"]), key=f"p_in_{l_key}", label_visibility="collapsed")
-                    r_done = s_cols[6].checkbox("Done", value=cur_l["done"], key=f"done_in_{l_key}", label_visibility="collapsed")
-                    
+                s_cols[0].write(f"{s}")
+                
+                # DEAKTIVIERUNGS-LOGIK FÜR UNGENUTZTE FELDER
+                is_weight_disabled = p_type in ["Linear Time", "Linear Reps"]
+                
+                r_kg = s_cols[1].number_input("Weight", value=float(cur_l["kg"]), step=0.25, format="%.2f", key=f"w_in_{l_key}", label_visibility="collapsed", disabled=is_weight_disabled)
+                
+                if p_type == "Linear Time":
+                    r_r = s_cols[2].number_input("Time", value=int(cur_l["r"]), step=5, key=f"t_in_{l_key}", label_visibility="collapsed")
                 else:
-                    s_cols = st.columns([1, 2, 2, 2, 3, 1])
-                    s_cols[0].write(f"{s}")
-                    
-                    r_kg = s_cols[1].number_input("Weight", value=float(cur_l["kg"]), step=0.25, format="%.2f", key=f"w_in_{l_key}", label_visibility="collapsed")
                     r_r = s_cols[2].number_input("Reps", value=int(cur_l["r"]), step=1, key=f"r_in_{l_key}", label_visibility="collapsed")
-                    r_rir = s_cols[3].number_input("RIR", value=int(cur_l["rir"]), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
-                    r_p = s_cols[4].selectbox("Pain", options=[0, 1, 2], index=int(cur_l["p"]), key=f"p_in_{l_key}", label_visibility="collapsed")
-                    r_done = s_cols[5].checkbox("Done", value=cur_l["done"], key=f"done_in_{l_key}", label_visibility="collapsed")
+                    
+                r_rir = s_cols[3].number_input("RIR", value=int(cur_l["rir"]), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
+                r_p = s_cols[4].selectbox("Pain", options=[0, 1, 2], index=int(cur_l["p"]), key=f"p_in_{l_key}", label_visibility="collapsed")
+                r_done = s_cols[5].checkbox("Done", value=cur_l["done"], key=f"done_in_{l_key}", label_visibility="collapsed")
                 
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M") if r_done and not cur_l["done"] else (cur_l["ts"] if r_done else "")
                 st.session_state.training_logs[l_key] = {"kg": r_kg, "r": r_r, "rir": r_rir, "p": r_p, "done": r_done, "ts": ts}
             
-            # NEU: ADD SET BUTTON DIREKT IM TRAINING
             if st.button("+ Add Set", key=f"add_set_{w_label}_{selected_day}_{ex['name']}"):
                 if w_idx < len(st.session_state.my_plan[selected_day][i]["sets"]):
                     st.session_state.my_plan[selected_day][i]["sets"][w_idx] += 1
