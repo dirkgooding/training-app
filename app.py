@@ -65,12 +65,10 @@ with tab_work:
             
             c_n1, c_n2 = st.columns(2)
             with c_n1:
-                # CHANGED: Reverted to the original long label
                 st.session_state.device_settings[ex['name']] = st.text_input("Exercise Settings and Machine Setup", value=st.session_state.device_settings.get(ex['name'], ""), key=f"dev_{ex['name']}_{selected_day}")
             with c_n2:
                 st.text_input("Note", key=f"note_{ex['name']}_{w_label}_{selected_day}")
 
-            # SYMMETRIC GRID (1:1:1:1:1:1:1)
             cols = st.columns([1, 1, 1, 1, 1, 1, 1])
             cols[0].caption("Set")
             cols[1].caption("Weight")
@@ -224,16 +222,29 @@ with tab_progr:
                     
                     if p_type == "Double Progression":
                         o_prog["start_weight"] = c2.number_input("Start Weight", 0.0, 500.0, float(o_prog.get("start_weight", 20.0)), key=f"sw_{d_key}_{ex['name']}")
-                        o_prog["min_reps"] = c3.number_input("Min Reps", 1, 100, 8, key=f"minr_{d_key}_{ex['name']}")
-                        o_prog["max_reps"] = c4.number_input("Max Reps", 1, 100, 12, key=f"maxr_{d_key}_{ex['name']}")
+                        o_prog["min_reps"] = c3.number_input("Min Reps", 1, 100, int(o_prog.get("min_reps", 8)), key=f"minr_{d_key}_{ex['name']}")
+                        o_prog["max_reps"] = c4.number_input("Max Reps", 1, 100, int(o_prog.get("max_reps", 12)), key=f"maxr_{d_key}_{ex['name']}")
                     elif p_type == "Linear Weight":
                         o_prog["start_weight"] = c2.number_input("Start Weight", 0.0, 500.0, float(o_prog.get("start_weight", 20.0)), key=f"sw_{d_key}_{ex['name']}")
-                        o_prog["glob_reps"] = c3.number_input("Target Reps", 1, 100, 10, key=f"gr_{d_key}_{ex['name']}")
+                        o_prog["glob_reps"] = c3.number_input("Target Reps", 1, 100, int(o_prog.get("glob_reps", 10)), key=f"gr_{d_key}_{ex['name']}")
                     elif p_type == "Linear Reps":
-                        o_prog["start_reps"] = c2.number_input("Start Reps", 1, 100, 8, key=f"sr_{d_key}_{ex['name']}")
+                        o_prog["start_reps"] = c2.number_input("Start Reps", 1, 100, int(o_prog.get("start_reps", 8)), key=f"sr_{d_key}_{ex['name']}")
                     elif p_type == "Linear Time":
-                        o_prog["start_time"] = c2.number_input("Start Time (sec)", 1, 3600, 30, key=f"st_{d_key}_{ex['name']}")
+                        o_prog["start_time"] = c2.number_input("Start Time (sec)", 1, 3600, int(o_prog.get("start_time", 30)), key=f"st_{d_key}_{ex['name']}")
                     
+                    with st.expander("Progression logic and increments"):
+                        l1, l2 = st.columns(2)
+                        if "Time" in p_type:
+                            inc_label, inc_step = "Time increment (sec)", 5.0
+                        elif "Reps" in p_type:
+                            inc_label, inc_step = "Reps increment", 1.0
+                        else:
+                            inc_label, inc_step = "Weight increment", 0.25
+                        
+                        o_prog["inc_weight"] = l1.number_input(inc_label, 0.0, 300.0, float(o_prog.get("inc_weight", 1.25)), inc_step, format="%.2f", key=f"iw_{d_key}_{ex['name']}")
+                        o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{ex['name']}")
+                        o_prog["freq_del"] = l2.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{ex['name']}")
+
                     o_prog["type"] = p_type
                     o_prog["glob_sets"] = g_s
                     st.session_state.my_plan[d_key][i]["progression"] = o_prog
