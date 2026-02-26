@@ -11,7 +11,6 @@ if 'deload_strategy' not in st.session_state: st.session_state.deload_strategy =
 if 'deload_intensity' not in st.session_state: st.session_state.deload_intensity = 50
 if 'reduce_sets_deload' not in st.session_state: st.session_state.reduce_sets_deload = False
 
-# Basis-Vorlagen mit passenden Inkrementen
 def_prog_weight = {
     "type": "Linear Weight", 
     "inc_weight": 1.25, "inc_reps": 1, "inc_sec": 5, 
@@ -104,22 +103,23 @@ with tab_plan:
         st.session_state.deload_intensity = st.slider("Percentage of training weight for deload week (%)", 50, 100, st.session_state.deload_intensity, step=10)
     with row2_col2:
         st.write("") 
-        st.session_state.reduce_sets_deload = st.checkbox("Reduce number of sets by 50%", value=st.session_state.reduce_sets_deload, help="Halving the sets further reduces training volume to maximize recovery while maintaining movement quality.")
+        st.session_state.reduce_sets_deload = st.checkbox("Reduce number of sets by 50%", value=st.session_state.reduce_sets_deload)
 
     st.divider()
 
     for d_key in list(st.session_state.my_plan.keys()):
-        st.subheader(f"📅 {d_key}")
+        st.subheader(d_key)
         with st.expander(f"Edit Setup for {d_key}", expanded=True):
             new_dn = st.text_input("Rename Day", d_key, key=f"ren_{d_key}")
+            
+            if new_dn != d_key and new_dn.strip() != "":
+                st.session_state.my_plan[new_dn] = st.session_state.my_plan.pop(d_key)
+                st.rerun()
+                
             if st.button("Delete Day", key=f"del_{d_key}"):
                 if len(st.session_state.my_plan) > 1:
                     st.session_state.my_plan.pop(d_key)
                     st.rerun()
-
-            if new_dn != d_key and new_dn.strip() != "":
-                st.session_state.my_plan[new_dn] = st.session_state.my_plan.pop(d_key)
-                st.rerun()
             
             ex_txt = "\n".join([e["name"] for e in st.session_state.my_plan[d_key]])
             new_ex_txt = st.text_area("Exercises for this day (one per line):", value=ex_txt, key=f"edit_exs_{d_key}")
