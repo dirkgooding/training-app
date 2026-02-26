@@ -93,23 +93,18 @@ with tab_plan:
         st.session_state.cycle_weeks = st.number_input("Number of weeks for this training cycle", 1, 12, st.session_state.cycle_weeks)
     with row1_col2:
         strategies = ["No automatic deload", "Use last week of cycle as deload", "Add deload week after cycle"]
-        st.session_state.deload_strategy = st.selectbox("Select deload strategy", 
-            strategies,
-            index=strategies.index(st.session_state.deload_strategy))
+        st.session_state.deload_strategy = st.selectbox("Select deload strategy", strategies, index=strategies.index(st.session_state.deload_strategy))
     
     row2_col1, row2_col2 = st.columns(2)
     with row2_col1:
         st.session_state.deload_intensity = st.slider("Percentage of training weight for deload week (%)", 50, 100, st.session_state.deload_intensity, step=10)
     with row2_col2:
         st.write("") 
-        st.session_state.reduce_sets_deload = st.checkbox("Reduce number of sets by 50%", 
-            value=st.session_state.reduce_sets_deload,
-            help="Halving the sets further reduces training volume to maximize recovery while maintaining movement quality.")
+        st.session_state.reduce_sets_deload = st.checkbox("Reduce number of sets by 50%", value=st.session_state.reduce_sets_deload, help="Halving the sets further reduces training volume to maximize recovery while maintaining movement quality.")
 
     for d_key in list(st.session_state.my_plan.keys()):
         with st.expander(f"Edit Day: {d_key}", expanded=True):
             new_dn = st.text_input("Rename Day", d_key, key=f"ren_{d_key}")
-            
             if st.button("Delete Day", key=f"del_{d_key}"):
                 if len(st.session_state.my_plan) > 1:
                     st.session_state.my_plan.pop(d_key)
@@ -175,3 +170,32 @@ with tab_plan:
     if st.button("Add New Training Day"):
         st.session_state.my_plan[f"Day {len(st.session_state.my_plan)+1}"] = []
         st.rerun()
+
+# --- TAB 3: DATA MANAGEMENT ---
+with tab_data:
+    st.header("Data Management")
+    has_data = False
+    if st.session_state.training_logs:
+        log_list = []
+        for k, v in st.session_state.training_logs.items():
+            if v["done"]:
+                parts = k.split("_")
+                log_list.append({"Date": v["ts"], "Week": parts[0], "Day": parts[1], "Exercise": parts[2], "Set": parts[3], "Weight": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
+        if log_list:
+            has_data = True
+            df = pd.DataFrame(log_list)
+            st.download_button("Download CSV", df.to_csv(index=False, sep=";"), "training.csv", "text/csv")
+            st.dataframe(df, use_container_width=True)
+    if not has_data:
+        st.info("No training data recorded yet.")
+
+# --- TAB 4: HISTORY ---
+with tab_calendar:
+    st.header("History")
+    history_items = [k for k, v in st.session_state.training_logs.items() if v["done"]]
+    if history_items:
+        for k in sorted(history_items, reverse=True):
+            v = st.session_state.training_logs[k]
+            st.write(f"**{v['ts']}** - {k.replace('_',' ')}: {v['kg']}kg x {v['r']} (Pain: {v['p']})")
+    else:
+        st.info("No history available yet.")
