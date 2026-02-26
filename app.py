@@ -56,7 +56,6 @@ with tab_train:
             with c_n2:
                 st.text_input(f"Note", key=f"note_{ex['name']}_{w_label}_{selected_day}")
 
-            # Labels Row
             cols = st.columns([1, 2, 2, 2, 3, 1])
             cols[0].caption("Set")
             cols[1].caption("Weight")
@@ -88,9 +87,9 @@ with tab_plan:
 
     for d_key in list(st.session_state.my_plan.keys()):
         with st.expander(f"Edit Day: {d_key}", expanded=True):
-            col_d1, col_d2 = st.columns([3, 1])
-            new_dn = col_d1.text_input("Rename Day", d_key, key=f"ren_{d_key}")
-            if col_d2.button("Delete Day", key=f"del_{d_key}"):
+            new_dn = st.text_input("Rename Day", d_key, key=f"ren_{d_key}")
+            
+            if st.button("Delete Day", key=f"del_{d_key}"):
                 if len(st.session_state.my_plan) > 1:
                     st.session_state.my_plan.pop(d_key)
                     st.rerun()
@@ -100,7 +99,7 @@ with tab_plan:
                 st.rerun()
             
             ex_txt = "\n".join([e["name"] for e in st.session_state.my_plan[d_key]])
-            new_ex_txt = st.text_area("Exercises:", value=ex_txt, key=f"edit_exs_{d_key}")
+            new_ex_txt = st.text_area("Exercises for this day:", value=ex_txt, key=f"edit_exs_{d_key}")
             names = [n.strip() for n in new_ex_txt.split("\n") if n.strip()]
             
             upd_data = []
@@ -111,7 +110,7 @@ with tab_plan:
                 o_prog = match["progression"].copy() if match else def_prog_linear.copy()
                 
                 prog_options = ["Linear Weight", "Linear Reps", "Linear Time", "Double Progression", "Expert Matrix"]
-                p_type = st.selectbox("Progression Model", prog_options, index=prog_options.index(o_prog["type"]) if o_prog["type"] in prog_options else 0, key=f"ptype_{d_key}_{n}")
+                p_type = st.selectbox("Choose your progression model", prog_options, index=prog_options.index(o_prog["type"]) if o_prog["type"] in prog_options else 0, key=f"ptype_{d_key}_{n}")
                 
                 n_sets, n_reps = [], []
                 
@@ -142,7 +141,7 @@ with tab_plan:
                         n_sets = [g_s] * st.session_state.cycle_weeks
                     o_prog["glob_sets"] = g_s
 
-                with st.expander("Logic & Increments"):
+                with st.expander("Progression logic and increments"):
                     l1, l2 = st.columns(2)
                     o_prog["inc_weight"] = l1.number_input("Weight increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), 1.25, key=f"iw_{d_key}_{n}")
                     o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{n}")
