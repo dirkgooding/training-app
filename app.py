@@ -232,9 +232,7 @@ with tab_progr:
                     elif p_type == "Linear Time":
                         o_prog["start_time"] = c2.number_input("Start Time (sec)", 1, 3600, int(o_prog.get("start_time", 30)), key=f"st_{d_key}_{ex['name']}")
                     
-                    st.markdown("---")
                     l1, l2, l3 = st.columns(3)
-                    # UPDATED Labels according to Option 1
                     if "Time" in p_type:
                         inc_label, inc_step = "Increase time by (sec)", 5.0
                     elif "Reps" in p_type:
