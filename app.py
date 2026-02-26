@@ -113,8 +113,11 @@ with tab_plan:
             new_dn = st.text_input("Rename Day", d_key, key=f"ren_{d_key}")
             
             if new_dn != d_key and new_dn.strip() != "":
-                st.session_state.my_plan[new_dn] = st.session_state.my_plan.pop(d_key)
-                st.rerun()
+                if new_dn in st.session_state.my_plan:
+                    st.error(f"The name '{new_dn}' already exists. Please choose a unique name.")
+                else:
+                    st.session_state.my_plan[new_dn] = st.session_state.my_plan.pop(d_key)
+                    st.rerun()
                 
             if st.button("Delete Day", key=f"del_{d_key}"):
                 if len(st.session_state.my_plan) > 1:
