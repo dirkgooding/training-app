@@ -8,22 +8,24 @@ st.set_page_config(page_title="Strong Pain Coach", layout="wide")
 # --- INITIALIZATION ---
 if 'cycle_weeks' not in st.session_state: st.session_state.cycle_weeks = 4
 
-def_prog_expert = {
-    "type": "Expert Matrix", 
+# Standard-Logik auf Linear Weight gesetzt
+def_prog_linear = {
+    "type": "Linear Weight", 
     "inc_weight": 1.25, "inc_reps": 1, "inc_sec": 5, 
     "freq_inc": 1, "freq_del": 2,
     "min_reps": 8, "max_reps": 12, "glob_sets": 3, "glob_reps": 10
 }
 
+# Initialisierung mit Linear Weight als Default
 if 'my_plan' not in st.session_state: 
     st.session_state.my_plan = {
         "Day 1": [
-            {"name": "Test 1", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_expert.copy()}, 
-            {"name": "Test 2", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_expert.copy()}
+            {"name": "Test 1", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_linear.copy()}, 
+            {"name": "Test 2", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_linear.copy()}
         ], 
         "Day 2": [
-            {"name": "Test 3", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_expert.copy()}, 
-            {"name": "Test 4", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_expert.copy()}
+            {"name": "Test 3", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_linear.copy()}, 
+            {"name": "Test 4", "sets": [1, 2, 3, 4], "reps": [10, 10, 10, 10], "progression": def_prog_linear.copy()}
         ]
     }
 
@@ -90,17 +92,17 @@ with tab_plan:
                 st.rerun()
             
             ex_txt = "\n".join([e["name"] for e in st.session_state.my_plan[d_key]])
-            new_ex_txt = st.text_area("Exercises:", value=ex_txt, key=f"edit_exs_{d_key}")
+            new_ex_txt = st.text_area("Exercises (one per line):", value=ex_txt, key=f"edit_exs_{d_key}")
             names = [n.strip() for n in new_ex_txt.split("\n") if n.strip()]
             
             upd_data = []
             for n in names:
                 st.markdown(f"#### Setup: {n}")
                 match = next((e for e in st.session_state.my_plan[d_key] if e["name"] == n), None)
-                o_prog = match["progression"].copy() if match else def_prog_expert.copy()
+                o_prog = match["progression"].copy() if match else def_prog_linear.copy()
                 
                 prog_options = ["Linear Weight", "Linear Reps", "Linear Time", "Double Progression", "Expert Matrix"]
-                p_type = st.selectbox("Model", prog_options, index=prog_options.index(o_prog["type"]) if o_prog["type"] in prog_options else 4, key=f"ptype_{d_key}_{n}")
+                p_type = st.selectbox("Progression Model", prog_options, index=prog_options.index(o_prog["type"]) if o_prog["type"] in prog_options else 0, key=f"ptype_{d_key}_{n}")
                 
                 n_sets, n_reps = [], []
                 
@@ -124,7 +126,12 @@ with tab_plan:
                         unit_label = "Goal (Seconds)" if "Time" in p_type else "Goal (Reps)"
                         o_prog["glob_reps"] = c2.number_input(unit_label, 1, 300, int(o_prog.get("glob_reps", 10)), key=f"gr_{d_key}_{n}")
                         n_reps = [o_prog["glob_reps"]] * st.session_state.cycle_weeks
-                    n_sets = [g_s] * st.session_state.cycle_weeks
+                    
+                    # Behalte die manuelle Satzsteigerung bei Initialisierung bei, falls vorhanden
+                    if match and len(match["sets"]) == st.session_state.cycle_weeks:
+                        n_sets = match["sets"]
+                    else:
+                        n_sets = [g_s] * st.session_state.cycle_weeks
                     o_prog["glob_sets"] = g_s
 
                 with st.expander("Logic & Increments"):
