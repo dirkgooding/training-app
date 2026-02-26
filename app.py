@@ -8,8 +8,18 @@ st.set_page_config(page_title="Strong Pain Coach", layout="wide")
 # --- INITIALIZATION ---
 if 'cycle_weeks' not in st.session_state: st.session_state.cycle_weeks = 4
 
-# Standard Progression Values
-def_prog = {"type": "Linear (Weight Only)", "inc_weight": 1.25, "inc_reps": 0, "inc_sec": 0, "freq_inc": 1, "freq_del": 2}
+# Standard Progression Values (erweitert um globale Parameter für Double Progression)
+def_prog = {
+    "type": "Linear (Weight Only)", 
+    "inc_weight": 1.25, 
+    "inc_reps": 0, 
+    "inc_sec": 0, 
+    "freq_inc": 1, 
+    "freq_del": 2,
+    "base_reps": 8,
+    "target_reps": 12,
+    "glob_sets": 3
+}
 
 if 'my_plan' not in st.session_state: 
     st.session_state.my_plan = {
@@ -54,7 +64,7 @@ with tab_train:
             c_sets = sets_list[w_idx] if w_idx < len(sets_list) else sets_list[-1]
             c_reps = reps_list[w_idx] if w_idx < len(reps_list) else reps_list[-1]
             
-            st.subheader(f"{i+1}. {name} ({c_sets} Sets | Goal: {c_reps} Reps)")
+            st.subheader(f"{i+1}. {name} ({c_sets} Sets | Goal: {c_reps} Reps/Sec)")
             
             c_n1, c_n2 = st.columns(2)
             with c_n1:
@@ -115,7 +125,7 @@ with tab_plan:
             upd_data = []
             
             for n in names:
-                st.write(f"**Sets & Reps for: {n}**")
+                st.write(f"**Setup: {n}**")
                 o_sets = [3] * st.session_state.cycle_weeks
                 o_reps = [10] * st.session_state.cycle_weeks
                 o_prog = def_prog.copy()
@@ -127,25 +137,41 @@ with tab_plan:
                         if "reps" in e and isinstance(e["reps"], list): o_reps = e["reps"]
                         elif "reps" in e: o_reps = [e["reps"]] * st.session_state.cycle_weeks
                         if "progression" in e: o_prog = e["progression"]
+
+                # Dynamische Anpassung der Eingabemaske
+                type_options = ["Linear (Weight Only)", "Double Progression (Weight & Reps)", "Reps Only", "Time (Seconds)"]
+                current_type = o_prog.get("type", "Linear (Weight Only)")
+                if current_type not in type_options: current_type = "Linear (Weight Only)"
                 
-                w_cols = st.columns(st.session_state.cycle_weeks)
+                p_type = st.selectbox("Progression Model", type_options, index=type_options.index(current_type), key=f"ptype_{d_key}_{n}")
+                
                 n_sets = []
                 n_reps = []
-                for w in range(st.session_state.cycle_weeks):
-                    v_s = o_sets[w] if w < len(o_sets) else o_sets[-1]
-                    v_r = o_reps[w] if w < len(o_reps) else o_reps[-1]
-                    s_v = w_cols[w].number_input(f"W{w+1} Sets", 1, 15, int(v_s), key=f"s_{d_key}_{n}_{w}")
-                    r_v = w_cols[w].number_input(f"W{w+1} Reps/Sec", 1, 300, int(v_r), key=f"r_{d_key}_{n}_{w}")
-                    n_sets.append(s_v)
-                    n_reps.append(r_v)
                 
-                with st.expander(f"⚙️ Progression & Deload for {n}"):
-                    type_options = ["Linear (Weight Only)", "Double Progression (Weight & Reps)", "Reps Only", "Time (Seconds)"]
-                    current_type = o_prog.get("type", "Linear (Weight Only)")
-                    if current_type not in type_options: current_type = "Linear (Weight Only)"
+                if p_type in ["Double Progression (Weight & Reps)", "Reps Only"]:
+                    col_s, col_br, col_tr = st.columns(3)
+                    n_sets_glob = col_s.number_input("Sets", 1, 15, int(o_prog.get("glob_sets", 3)), key=f"gsets_{d_key}_{n}")
+                    n_base = col_br.number_input("Base Reps", 1, 300, int(o_prog.get("base_reps", 8)), key=f"br_{d_key}_{n}")
+                    n_target = col_tr.number_input("Target Reps", 1, 300, int(o_prog.get("target_reps", 12)), key=f"tr_{d_key}_{n}")
                     
-                    p_type = st.selectbox("Progression Model", type_options, index=type_options.index(current_type), key=f"ptype_{d_key}_{n}")
+                    n_sets = [n_sets_glob] * st.session_state.cycle_weeks
+                    n_reps = [n_target] * st.session_state.cycle_weeks
                     
+                    # Werte für die nächste Schleife im Speicher halten
+                    o_prog["glob_sets"] = n_sets_glob
+                    o_prog["base_reps"] = n_base
+                    o_prog["target_reps"] = n_target
+                else:
+                    w_cols = st.columns(st.session_state.cycle_weeks)
+                    for w in range(st.session_state.cycle_weeks):
+                        v_s = o_sets[w] if w < len(o_sets) else o_sets[-1]
+                        v_r = o_reps[w] if w < len(o_reps) else o_reps[-1]
+                        s_v = w_cols[w].number_input(f"W{w+1} Sets", 1, 15, int(v_s), key=f"s_{d_key}_{n}_{w}")
+                        r_v = w_cols[w].number_input(f"W{w+1} Goal", 1, 300, int(v_r), key=f"r_{d_key}_{n}_{w}")
+                        n_sets.append(s_v)
+                        n_reps.append(r_v)
+                
+                with st.expander(f"⚙️ Increments & Deload for {n}"):
                     p_col1, p_col2, p_col3 = st.columns(3)
                     
                     if p_type == "Linear (Weight Only)":
@@ -175,7 +201,10 @@ with tab_plan:
                         "inc_reps": i_r,
                         "inc_sec": i_sec,
                         "freq_inc": f_inc,
-                        "freq_del": f_del
+                        "freq_del": f_del,
+                        "base_reps": o_prog.get("base_reps", 8),
+                        "target_reps": o_prog.get("target_reps", 12),
+                        "glob_sets": o_prog.get("glob_sets", 3)
                     }
 
                 upd_data.append({"name": n, "sets": n_sets, "reps": n_reps, "progression": new_prog})
