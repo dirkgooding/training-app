@@ -159,9 +159,14 @@ with tab_plan:
 
                 with st.expander("Progression logic and increments"):
                     l1, l2 = st.columns(2)
-                    # Dynamische Labels und Steps für Zeit vs Gewicht
-                    inc_label = "Time increment (sec)" if "Time" in p_type else "Weight increment"
-                    inc_step = 5.0 if "Time" in p_type else 0.25
+                    
+                    # Logik für dynamische Labels und Steps
+                    if "Time" in p_type:
+                        inc_label, inc_step = "Time increment (sec)", 5.0
+                    elif "Reps" in p_type:
+                        inc_label, inc_step = "Reps increment", 1.0
+                    else:
+                        inc_label, inc_step = "Weight increment", 0.25
                     
                     o_prog["inc_weight"] = l1.number_input(inc_label, 0.0, 300.0, float(o_prog.get("inc_weight", 1.25)), inc_step, format="%.2f", key=f"iw_{d_key}_{n}")
                     o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{n}")
