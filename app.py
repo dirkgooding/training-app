@@ -220,4 +220,52 @@ with tab_plan:
                             n_sets = [g_s] * st.session_state.cycle_weeks
                         o_prog["glob_sets"] = g_s
 
-                    l1, l2 = st
+                    l1, l2 = st.columns(2)
+                    if "Time" in p_type:
+                        inc_label, inc_step = "Time increment (sec)", 5.0
+                    elif "Reps" in p_type:
+                        inc_label, inc_step = "Reps increment", 1.0
+                    else:
+                        inc_label, inc_step = "Weight increment", 0.25
+                    
+                    o_prog["inc_weight"] = l1.number_input(inc_label, 0.0, 300.0, float(o_prog.get("inc_weight", 1.25)), inc_step, format="%.2f", key=f"iw_{d_key}_{n}")
+                    o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{n}")
+                    o_prog["freq_del"] = l2.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{n}")
+
+                    o_prog["type"] = p_type
+                    upd_data.append({"name": n, "sets": n_sets, "reps": n_reps, "progression": o_prog})
+            st.session_state.my_plan[d_key] = upd_data
+        st.divider()
+
+    if st.button("Add New Training Day"):
+        st.session_state.my_plan[f"Day {len(st.session_state.my_plan)+1}"] = []
+        st.rerun()
+
+# --- TAB 3: DATA MANAGEMENT ---
+with tab_data:
+    st.header("Data Management")
+    has_data = False
+    if st.session_state.training_logs:
+        log_list = []
+        for k, v in st.session_state.training_logs.items():
+            if v.get("done"):
+                parts = k.split("_")
+                log_list.append({"Date": v["ts"], "Week": parts[0], "Day": parts[1], "Exercise": parts[2], "Set": parts[3], "Weight": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]})
+        if log_list:
+            has_data = True
+            df = pd.DataFrame(log_list)
+            st.download_button("Download CSV", df.to_csv(index=False, sep=";"), "training.csv", "text/csv")
+            st.dataframe(df, use_container_width=True)
+    if not has_data:
+        st.info("No training data recorded yet.")
+
+# --- TAB 4: HISTORY ---
+with tab_calendar:
+    st.header("History")
+    history_items = [k for k, v in st.session_state.training_logs.items() if v.get("done")]
+    if history_items:
+        for k in sorted(history_items, reverse=True):
+            v = st.session_state.training_logs[k]
+            st.write(f"**{v['ts']}** - {k.replace('_',' ')}: {v['kg']}kg x {v['r']} (Pain: {v['p']})")
+    else:
+        st.info("No history available yet.")
