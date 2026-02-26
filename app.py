@@ -11,6 +11,7 @@ if 'deload_strategy' not in st.session_state: st.session_state.deload_strategy =
 if 'deload_intensity' not in st.session_state: st.session_state.deload_intensity = 50
 if 'reduce_sets_deload' not in st.session_state: st.session_state.reduce_sets_deload = False
 
+# Basis-Konfiguration mit Punkt-Notation
 def_prog_linear = {
     "type": "Linear Weight", 
     "inc_weight": 1.25, "inc_reps": 1, "inc_sec": 5, 
@@ -18,7 +19,7 @@ def_prog_linear = {
     "min_reps": 8, "max_reps": 12, "glob_sets": 3, "glob_reps": 10
 }
 
-# Voreinstellung exakt wie im Screenshot
+# Voreinstellung exakt wie im gewünschten Setup
 if 'my_plan' not in st.session_state: 
     st.session_state.my_plan = {
         "Day 1": [
@@ -165,7 +166,7 @@ with tab_plan:
 
                 with st.expander("Progression logic and increments"):
                     l1, l2 = st.columns(2)
-                    o_prog["inc_weight"] = l1.number_input("Weight increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), 1.25, key=f"iw_{d_key}_{n}")
+                    o_prog["inc_weight"] = l1.number_input("Weight increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), 0.25, key=f"iw_{d_key}_{n}")
                     o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{n}")
                     o_prog["freq_del"] = l2.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{n}")
 
@@ -176,6 +177,3 @@ with tab_plan:
     if st.button("Add New Training Day"):
         st.session_state.my_plan[f"Day {len(st.session_state.my_plan)+1}"] = []
         st.rerun()
-
-# --- TAB 3 & 4 (Data & History) ---
-# ... (bleiben unverändert)
