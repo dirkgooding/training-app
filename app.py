@@ -8,7 +8,6 @@ st.set_page_config(page_title="Strong Pain Coach", layout="wide")
 # --- INITIALIZATION ---
 if 'cycle_weeks' not in st.session_state: st.session_state.cycle_weeks = 4
 
-# Standard-Logik auf Linear Weight gesetzt
 def_prog_linear = {
     "type": "Linear Weight", 
     "inc_weight": 1.25, "inc_reps": 1, "inc_sec": 5, 
@@ -16,7 +15,6 @@ def_prog_linear = {
     "min_reps": 8, "max_reps": 12, "glob_sets": 3, "glob_reps": 10
 }
 
-# Initialisierung mit Linear Weight als Default
 if 'my_plan' not in st.session_state: 
     st.session_state.my_plan = {
         "Day 1": [
@@ -127,7 +125,6 @@ with tab_plan:
                         o_prog["glob_reps"] = c2.number_input(unit_label, 1, 300, int(o_prog.get("glob_reps", 10)), key=f"gr_{d_key}_{n}")
                         n_reps = [o_prog["glob_reps"]] * st.session_state.cycle_weeks
                     
-                    # Behalte die manuelle Satzsteigerung bei Initialisierung bei, falls vorhanden
                     if match and len(match["sets"]) == st.session_state.cycle_weeks:
                         n_sets = match["sets"]
                     else:
@@ -154,17 +151,31 @@ with tab_plan:
         st.session_state.my_plan[f"Day {len(st.session_state.my_plan)+1}"] = []
         st.rerun()
 
-# --- DATA & HISTORY ---
+# --- TAB 3: DATA MANAGEMENT ---
 with tab_data:
     st.header("Data Management")
+    has_data = False
     if st.session_state.training_logs:
         df = pd.DataFrame([{"Date": v["ts"], "Week": k.split("_")[0], "Day": k.split("_")[1], "Exercise": k.split("_")[2], "Set": k.split("_")[3], "Weight": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]} for k,v in st.session_state.training_logs.items() if v["done"]])
         if not df.empty:
+            has_data = True
             st.download_button("Download CSV", df.to_csv(index=False, sep=";"), "training.csv", "text/csv")
             st.dataframe(df, use_container_width=True)
+    
+    if not has_data:
+        st.info("No training data recorded yet. Complete sets in the Training tab to see records here.")
 
+# --- TAB 4: HISTORY ---
 with tab_calendar:
     st.header("History")
+    has_history = False
     if st.session_state.training_logs:
-        for k, v in sorted(st.session_state.training_logs.items(), reverse=True):
-            if v["done"]: st.write(f"**{v['ts']}** - {k.replace('_',' ')}: {v['kg']}kg x {v['r']} (Pain: {v['p']})")
+        history_items = [k for k, v in st.session_state.training_logs.items() if v["done"]]
+        if history_items:
+            has_history = True
+            for k in sorted(history_items, reverse=True):
+                v = st.session_state.training_logs[k]
+                st.write(f"**{v['ts']}** - {k.replace('_',' ')}: {v['kg']}kg x {v['r']} (Pain: {v['p']})")
+    
+    if not has_history:
+        st.info("No history available. Once you complete exercises, your progress will be listed here chronologically.")
