@@ -8,7 +8,6 @@ st.set_page_config(page_title="Strong Pain Coach", layout="wide")
 # --- INITIALIZATION ---
 if 'cycle_weeks' not in st.session_state: st.session_state.cycle_weeks = 4
 
-# Standard-Logik für Expert Matrix (wird für die Initialisierung genutzt)
 def_prog_expert = {
     "type": "Expert Matrix", 
     "inc_weight": 1.25, "inc_reps": 1, "inc_sec": 5, 
@@ -16,7 +15,6 @@ def_prog_expert = {
     "min_reps": 8, "max_reps": 12, "glob_sets": 3, "glob_reps": 10
 }
 
-# WIEDERHERSTELLUNG DER GEWÜNSCHTEN STRUKTUR (Fixiert)
 if 'my_plan' not in st.session_state: 
     st.session_state.my_plan = {
         "Day 1": [
@@ -82,7 +80,7 @@ with tab_plan:
         with st.expander(f"Edit Day: {d_key}", expanded=True):
             col_d1, col_d2 = st.columns([3, 1])
             new_dn = col_d1.text_input("Rename Day", d_key, key=f"ren_{d_key}")
-            if col_d2.button("🗑️ Delete Day", key=f"del_{d_key}"):
+            if col_d2.button("Delete Day", key=f"del_{d_key}"):
                 if len(st.session_state.my_plan) > 1:
                     st.session_state.my_plan.pop(d_key)
                     st.rerun()
@@ -92,12 +90,12 @@ with tab_plan:
                 st.rerun()
             
             ex_txt = "\n".join([e["name"] for e in st.session_state.my_plan[d_key]])
-            new_ex_txt = st.text_area("Exercises (one per line):", value=ex_txt, key=f"edit_exs_{d_key}")
+            new_ex_txt = st.text_area("Exercises:", value=ex_txt, key=f"edit_exs_{d_key}")
             names = [n.strip() for n in new_ex_txt.split("\n") if n.strip()]
             
             upd_data = []
             for n in names:
-                st.markdown(f"#### 🏋️ {n}")
+                st.markdown(f"#### Setup: {n}")
                 match = next((e for e in st.session_state.my_plan[d_key] if e["name"] == n), None)
                 o_prog = match["progression"].copy() if match else def_prog_expert.copy()
                 
@@ -108,14 +106,12 @@ with tab_plan:
                 
                 if p_type == "Expert Matrix":
                     st.caption("Weekly Volume Matrix")
-                    h_cols = st.columns(st.session_state.cycle_weeks)
                     w_cols = st.columns(st.session_state.cycle_weeks)
                     for w in range(st.session_state.cycle_weeks):
-                        h_cols[w].markdown(f"<center><b>W{w+1}</b></center>", unsafe_allow_html=True)
                         old_s = match["sets"][w] if (match and w < len(match["sets"])) else 3
                         old_r = match["reps"][w] if (match and w < len(match["reps"])) else 10
-                        s_v = w_cols[w].number_input(f"S", 1, 15, int(old_s), key=f"es_{d_key}_{n}_{w}", label_visibility="collapsed")
-                        r_v = w_cols[w].number_input(f"G", 1, 300, int(old_r), key=f"er_{d_key}_{n}_{w}", label_visibility="collapsed")
+                        s_v = w_cols[w].number_input(f"W{w+1} S", 1, 15, int(old_s), key=f"es_{d_key}_{n}_{w}")
+                        r_v = w_cols[w].number_input(f"W{w+1} G", 1, 300, int(old_r), key=f"er_{d_key}_{n}_{w}")
                         n_sets.append(s_v); n_reps.append(r_v)
                 else:
                     c1, c2, c3 = st.columns(3)
@@ -131,7 +127,7 @@ with tab_plan:
                     n_sets = [g_s] * st.session_state.cycle_weeks
                     o_prog["glob_sets"] = g_s
 
-                with st.expander("⚙️ Logic & Increments"):
+                with st.expander("Logic & Increments"):
                     l1, l2 = st.columns(2)
                     if any(x in p_type for x in ["Weight", "Double", "Expert"]): 
                         o_prog["inc_weight"] = l1.number_input("Weight added after Success", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), 1.25, key=f"iw_{d_key}_{n}")
@@ -146,3 +142,22 @@ with tab_plan:
                 o_prog["type"] = p_type
                 upd_data.append({"name": n, "sets": n_sets, "reps": n_reps, "progression": o_prog})
             st.session_state.my_plan[d_key] = upd_data
+
+    if st.button("Add New Training Day"):
+        st.session_state.my_plan[f"Day {len(st.session_state.my_plan)+1}"] = []
+        st.rerun()
+
+# --- DATA & HISTORY ---
+with tab_data:
+    st.header("Data Management")
+    if st.session_state.training_logs:
+        df = pd.DataFrame([{"Date": v["ts"], "Week": k.split("_")[0], "Day": k.split("_")[1], "Exercise": k.split("_")[2], "Set": k.split("_")[3], "Weight": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]} for k,v in st.session_state.training_logs.items() if v["done"]])
+        if not df.empty:
+            st.download_button("Download CSV", df.to_csv(index=False, sep=";"), "training.csv", "text/csv")
+            st.dataframe(df, use_container_width=True)
+
+with tab_calendar:
+    st.header("History")
+    if st.session_state.training_logs:
+        for k, v in sorted(st.session_state.training_logs.items(), reverse=True):
+            if v["done"]: st.write(f"**{v['ts']}** - {k.replace('_',' ')}: {v['kg']}kg x {v['r']} (Pain: {v['p']})")
