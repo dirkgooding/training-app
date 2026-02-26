@@ -42,8 +42,9 @@ if 'training_logs' not in st.session_state: st.session_state.training_logs = {}
 if 'device_settings' not in st.session_state: st.session_state.device_settings = {}
 
 # --- TABS ---
-tab_work, tab_prog, tab_progr, tab_warm, tab_rest, tab_data, tab_hist, tab_pain = st.tabs([
-    "Workouts", "Program", "Progression", "Warmups", "Rest Timer", "Data", "History", "Pain Management"
+# CHANGED: "Pain Management" moved to follow "Progression"
+tab_work, tab_prog, tab_progr, tab_pain, tab_warm, tab_rest, tab_data, tab_hist = st.tabs([
+    "Workouts", "Program", "Progression", "Pain Management", "Warmups", "Rest Timer", "Data", "History"
 ])
 
 # --- TAB 1: WORKOUTS ---
@@ -232,29 +233,34 @@ with tab_progr:
                     elif p_type == "Linear Time":
                         o_prog["start_time"] = c2.number_input("Start Time (sec)", 1, 3600, int(o_prog.get("start_time", 30)), key=f"st_{d_key}_{ex['name']}")
                     
-                    with st.expander("Progression logic and increments"):
-                        l1, l2 = st.columns(2)
-                        if "Time" in p_type:
-                            inc_label, inc_step = "Time increment (sec)", 5.0
-                        elif "Reps" in p_type:
-                            inc_label, inc_step = "Reps increment", 1.0
-                        else:
-                            inc_label, inc_step = "Weight increment", 0.25
-                        
-                        o_prog["inc_weight"] = l1.number_input(inc_label, 0.0, 300.0, float(o_prog.get("inc_weight", 1.25)), inc_step, format="%.2f", key=f"iw_{d_key}_{ex['name']}")
-                        o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{ex['name']}")
-                        o_prog["freq_del"] = l2.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{ex['name']}")
+                    st.markdown("---")
+                    l1, l2, l3 = st.columns(3)
+                    if "Time" in p_type:
+                        inc_label, inc_step = "Time increment (sec)", 5.0
+                    elif "Reps" in p_type:
+                        inc_label, inc_step = "Reps increment", 1.0
+                    else:
+                        inc_label, inc_step = "Weight increment", 0.25
+                    
+                    o_prog["inc_weight"] = l1.number_input(inc_label, 0.0, 300.0, float(o_prog.get("inc_weight", 1.25)), inc_step, format="%.2f", key=f"iw_{d_key}_{ex['name']}")
+                    o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{ex['name']}")
+                    o_prog["freq_del"] = l3.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{ex['name']}")
 
                     o_prog["type"] = p_type
                     o_prog["glob_sets"] = g_s
                     st.session_state.my_plan[d_key][i]["progression"] = o_prog
 
-# --- TAB 4: WARMUPS ---
+# --- TAB 4: PAIN MANAGEMENT ---
+with tab_pain:
+    st.header("Pain Management")
+    st.info("Analytics and insights for your pain thresholds will appear here.")
+
+# --- TAB 5: WARMUPS ---
 with tab_warm:
     st.header("Warmup Configuration")
     st.info("Define your warmup routines here (Coming soon).")
 
-# --- TAB 5: REST TIMER ---
+# --- TAB 6: REST TIMER ---
 with tab_rest:
     st.header("Rest Timer Settings")
     for d_key, exercises in st.session_state.my_plan.items():
@@ -263,7 +269,7 @@ with tab_rest:
             col1.write(f"**{ex['name']}**")
             st.session_state.rest_defaults[ex['name']] = col2.text_input("Default Rest", value=st.session_state.rest_defaults.get(ex['name'], "1:30"), key=f"res_{ex['name']}")
 
-# --- TAB 6: DATA ---
+# --- TAB 7: DATA ---
 with tab_data:
     st.header("Data Management")
     log_data = [{"Key": k, **v} for k, v in st.session_state.training_logs.items() if v.get("done")]
@@ -272,7 +278,7 @@ with tab_data:
     else:
         st.info("No data recorded yet.")
 
-# --- TAB 7: HISTORY ---
+# --- TAB 8: HISTORY ---
 with tab_hist:
     st.header("History")
     has_history = any(v.get("done") for v in st.session_state.training_logs.values())
@@ -282,8 +288,3 @@ with tab_hist:
                 st.write(f"**{v['ts']}** - {k.replace('_',' ')}: {v['kg']}kg x {v['r']} (Type: {v['type']})")
     else:
         st.info("No history available yet. Complete a set to see it here.")
-
-# --- TAB 8: PAIN MANAGEMENT ---
-with tab_pain:
-    st.header("Pain Management")
-    st.info("Analytics and insights for your pain thresholds will appear here.")
