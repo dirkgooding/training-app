@@ -52,20 +52,30 @@ with tab_train:
             
             c_n1, c_n2 = st.columns(2)
             with c_n1:
-                st.session_state.device_settings[ex['name']] = st.text_input(f"Setup {ex['name']}", value=st.session_state.device_settings.get(ex['name'], ""), key=f"dev_{ex['name']}_{selected_day}")
+                st.session_state.device_settings[ex['name']] = st.text_input(f"Exercise Setup", value=st.session_state.device_settings.get(ex['name'], ""), key=f"dev_{ex['name']}_{selected_day}")
             with c_n2:
-                st.text_input(f"Note {ex['name']}", key=f"note_{ex['name']}_{w_label}_{selected_day}")
+                st.text_input(f"Note", key=f"note_{ex['name']}_{w_label}_{selected_day}")
+
+            # Labels Row
+            cols = st.columns([1, 2, 2, 2, 3, 1])
+            cols[0].caption("Set")
+            cols[1].caption("Weight")
+            cols[2].caption("Reps")
+            cols[3].caption("RIR")
+            cols[4].caption("Pain")
+            cols[5].caption("Done")
 
             for s in range(1, c_sets + 1):
                 s_cols = st.columns([1, 2, 2, 2, 3, 1])
                 l_key = f"{w_label}_{selected_day}_{ex['name']}_{s}"
                 cur_l = st.session_state.training_logs.get(l_key, {"kg": 20.0, "r": c_reps, "rir": 2, "p": 0, "done": False, "ts": ""})
                 
-                r_kg = s_cols[1].number_input("W", value=float(cur_l["kg"]), step=1.25, key=f"w_in_{l_key}", label_visibility="collapsed")
-                r_r = s_cols[2].number_input("R", value=int(cur_l["r"]), step=1, key=f"r_in_{l_key}", label_visibility="collapsed")
+                s_cols[0].write(f"{s}")
+                r_kg = s_cols[1].number_input("Weight", value=float(cur_l["kg"]), step=1.25, key=f"w_in_{l_key}", label_visibility="collapsed")
+                r_r = s_cols[2].number_input("Reps", value=int(cur_l["r"]), step=1, key=f"r_in_{l_key}", label_visibility="collapsed")
                 r_rir = s_cols[3].number_input("RIR", value=int(cur_l["rir"]), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
-                r_p = s_cols[4].selectbox("P", options=[0, 1, 2], index=int(cur_l["p"]), key=f"p_in_{l_key}", label_visibility="collapsed")
-                r_done = s_cols[5].checkbox("D", value=cur_l["done"], key=f"done_in_{l_key}", label_visibility="collapsed")
+                r_p = s_cols[4].selectbox("Pain", options=[0, 1, 2], index=int(cur_l["p"]), key=f"p_in_{l_key}", label_visibility="collapsed")
+                r_done = s_cols[5].checkbox("Done", value=cur_l["done"], key=f"done_in_{l_key}", label_visibility="collapsed")
                 
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M") if r_done and not cur_l["done"] else (cur_l["ts"] if r_done else "")
                 st.session_state.training_logs[l_key] = {"kg": r_kg, "r": r_r, "rir": r_rir, "p": r_p, "done": r_done, "ts": ts}
@@ -90,11 +100,12 @@ with tab_plan:
                 st.rerun()
             
             ex_txt = "\n".join([e["name"] for e in st.session_state.my_plan[d_key]])
-            new_ex_txt = st.text_area("Exercises (one per line):", value=ex_txt, key=f"edit_exs_{d_key}")
+            new_ex_txt = st.text_area("Exercises:", value=ex_txt, key=f"edit_exs_{d_key}")
             names = [n.strip() for n in new_ex_txt.split("\n") if n.strip()]
             
             upd_data = []
             for n in names:
+                st.markdown(f"---")
                 st.markdown(f"#### Setup: {n}")
                 match = next((e for e in st.session_state.my_plan[d_key] if e["name"] == n), None)
                 o_prog = match["progression"].copy() if match else def_prog_linear.copy()
@@ -110,8 +121,8 @@ with tab_plan:
                     for w in range(st.session_state.cycle_weeks):
                         old_s = match["sets"][w] if (match and w < len(match["sets"])) else 3
                         old_r = match["reps"][w] if (match and w < len(match["reps"])) else 10
-                        s_v = w_cols[w].number_input(f"W{w+1} S", 1, 15, int(old_s), key=f"es_{d_key}_{n}_{w}")
-                        r_v = w_cols[w].number_input(f"W{w+1} G", 1, 300, int(old_r), key=f"er_{d_key}_{n}_{w}")
+                        s_v = w_cols[w].number_input(f"W{w+1} Sets", 1, 15, int(old_s), key=f"es_{d_key}_{n}_{w}")
+                        r_v = w_cols[w].number_input(f"W{w+1} Goal", 1, 300, int(old_r), key=f"er_{d_key}_{n}_{w}")
                         n_sets.append(s_v); n_reps.append(r_v)
                 else:
                     c1, c2, c3 = st.columns(3)
@@ -121,7 +132,7 @@ with tab_plan:
                         o_prog["max_reps"] = c3.number_input("Maximum Reps", 1, 300, int(o_prog.get("max_reps", 12)), key=f"maxr_{d_key}_{n}")
                         n_reps = [o_prog["max_reps"]] * st.session_state.cycle_weeks
                     else:
-                        unit_label = "Goal (Seconds)" if "Time" in p_type else "Goal (Reps)"
+                        unit_label = "Goal"
                         o_prog["glob_reps"] = c2.number_input(unit_label, 1, 300, int(o_prog.get("glob_reps", 10)), key=f"gr_{d_key}_{n}")
                         n_reps = [o_prog["glob_reps"]] * st.session_state.cycle_weeks
                     
@@ -133,15 +144,9 @@ with tab_plan:
 
                 with st.expander("Logic & Increments"):
                     l1, l2 = st.columns(2)
-                    if any(x in p_type for x in ["Weight", "Double", "Expert"]): 
-                        o_prog["inc_weight"] = l1.number_input("Weight added after Success", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), 1.25, key=f"iw_{d_key}_{n}")
-                    if "Reps" in p_type: 
-                        o_prog["inc_reps"] = l1.number_input("Reps added after Success", 0, 20, int(o_prog.get("inc_reps", 1)), 1, key=f"ir_{d_key}_{n}")
-                    if "Time" in p_type: 
-                        o_prog["inc_sec"] = l1.number_input("Seconds added after Success", 0, 100, int(o_prog.get("inc_sec", 5)), 1, key=f"is_{d_key}_{n}")
-                    
-                    o_prog["freq_inc"] = l2.number_input("Successful Weeks until Increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{n}")
-                    o_prog["freq_del"] = l2.number_input("Failed Weeks until Deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{n}")
+                    o_prog["inc_weight"] = l1.number_input("Weight increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), 1.25, key=f"iw_{d_key}_{n}")
+                    o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{n}")
+                    o_prog["freq_del"] = l2.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{n}")
 
                 o_prog["type"] = p_type
                 upd_data.append({"name": n, "sets": n_sets, "reps": n_reps, "progression": o_prog})
@@ -156,9 +161,18 @@ with tab_data:
     st.header("Data Management")
     has_data = False
     if st.session_state.training_logs:
-        df = pd.DataFrame([{"Date": v["ts"], "Week": k.split("_")[0], "Day": k.split("_")[1], "Exercise": k.split("_")[2], "Set": k.split("_")[3], "Weight": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]} for k,v in st.session_state.training_logs.items() if v["done"]])
-        if not df.empty:
+        log_list = []
+        for k, v in st.session_state.training_logs.items():
+            if v["done"]:
+                parts = k.split("_")
+                log_list.append({
+                    "Date": v["ts"], "Week": parts[0], "Day": parts[1], 
+                    "Exercise": parts[2], "Set": parts[3], 
+                    "Weight": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]
+                })
+        if log_list:
             has_data = True
+            df = pd.DataFrame(log_list)
             st.download_button("Download CSV", df.to_csv(index=False, sep=";"), "training.csv", "text/csv")
             st.dataframe(df, use_container_width=True)
     
