@@ -125,7 +125,7 @@ with tab_plan:
                         n_sets.append(s_v); n_reps.append(r_v)
                 else:
                     c1, c2, c3 = st.columns(3)
-                    g_s = c1.number_input("Number of Sets for this cycle", 1, 15, int(o_prog.get("glob_sets", 3)), key=f"gs_{d_key}_{n}")
+                    g_s = c1.number_input("Number of sets for this cycle", 1, 15, int(o_prog.get("glob_sets", 3)), key=f"gs_{d_key}_{n}")
                     if p_type == "Double Progression":
                         o_prog["min_reps"] = c2.number_input("Minimum Reps", 1, 300, int(o_prog.get("min_reps", 8)), key=f"minr_{d_key}_{n}")
                         o_prog["max_reps"] = c3.number_input("Maximum Reps", 1, 300, int(o_prog.get("max_reps", 12)), key=f"maxr_{d_key}_{n}")
