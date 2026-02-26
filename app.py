@@ -13,7 +13,7 @@ def_prog = {
     "type": "Linear (Weight Only)", 
     "inc_weight": 1.25, "inc_reps": 1, "inc_sec": 5, 
     "freq_inc": 1, "freq_del": 2,
-    "base_reps": 8, "target_reps": 12, "glob_sets": 3
+    "min_reps": 8, "max_reps": 12, "glob_sets": 3
 }
 
 if 'my_plan' not in st.session_state: 
@@ -100,7 +100,6 @@ with tab_plan:
             upd_data = []
             for n in names:
                 st.markdown(f"**Setup: {n}**")
-                # Find existing data or use default
                 match = next((e for e in st.session_state.my_plan[d_key] if e["name"] == n), None)
                 o_sets = match["sets"] if match else [3] * st.session_state.cycle_weeks
                 o_reps = match["reps"] if match else [10] * st.session_state.cycle_weeks
@@ -115,21 +114,21 @@ with tab_plan:
                 if is_double and not st.session_state.expert_mode:
                     c1, c2, c3 = st.columns(3)
                     g_s = c1.number_input("Sets", 1, 15, int(o_prog.get("glob_sets", 3)), key=f"gs_{d_key}_{n}")
-                    b_r = c2.number_input("Base Reps", 1, 300, int(o_prog.get("base_reps", 8)), key=f"br_{d_key}_{n}")
-                    t_r = c3.number_input("Target Reps", 1, 300, int(o_prog.get("target_reps", 12)), key=f"tr_{d_key}_{n}")
-                    n_sets, n_reps = [g_s] * st.session_state.cycle_weeks, [t_r] * st.session_state.cycle_weeks
-                    o_prog.update({"glob_sets": g_s, "base_reps": b_r, "target_reps": t_r})
+                    min_r = c2.number_input("Minimum Reps", 1, 300, int(o_prog.get("min_reps", 8)), key=f"minr_{d_key}_{n}")
+                    max_r = c3.number_input("Maximum Reps", 1, 300, int(o_prog.get("max_reps", 12)), key=f"maxr_{d_key}_{n}")
+                    n_sets, n_reps = [g_s] * st.session_state.cycle_weeks, [max_r] * st.session_state.cycle_weeks
+                    o_prog.update({"glob_sets": g_s, "min_reps": min_r, "max_reps": max_r})
                 else:
                     w_cols = st.columns(st.session_state.cycle_weeks)
                     label = "Sec Goal" if p_type == "Time (Seconds)" else "Rep Goal"
                     for w in range(st.session_state.cycle_weeks):
-                        s_v = w_cols[w].number_input(f"W{w+1} Sets", 1, 15, int(o_sets[w] if w < len(o_sets) else o_sets[-1]), key=f"s_{d_key}_{n}_{w}")
-                        r_v = w_cols[w].number_input(f"W{w+1} {label}", 1, 300, int(o_reps[w] if w < len(o_reps) else o_reps[-1]), key=f"r_{d_key}_{n}_{w}")
+                        s_v = w_cols[w].number_input(f"Week {w+1} Sets", 1, 15, int(o_sets[w] if w < len(o_sets) else o_sets[-1]), key=f"s_{d_key}_{n}_{w}")
+                        r_v = w_cols[w].number_input(f"Week {w+1} {label}", 1, 300, int(o_reps[w] if w < len(o_reps) else o_reps[-1]), key=f"r_{d_key}_{n}_{w}")
                         n_sets.append(s_v); n_reps.append(r_v)
                     if is_double:
                         c1, c2 = st.columns(2)
-                        o_prog["base_reps"] = c1.number_input("Base Reps", 1, 300, int(o_prog.get("base_reps", 8)), key=f"br_e_{d_key}_{n}")
-                        o_prog["target_reps"] = c2.number_input("Target Reps", 1, 300, int(o_prog.get("target_reps", 12)), key=f"tr_e_{d_key}_{n}")
+                        o_prog["min_reps"] = c1.number_input("Minimum Reps", 1, 300, int(o_prog.get("min_reps", 8)), key=f"minr_e_{d_key}_{n}")
+                        o_prog["max_reps"] = c2.number_input("Maximum Reps", 1, 300, int(o_prog.get("max_reps", 12)), key=f"maxr_e_{d_key}_{n}")
 
                 with st.expander("⚙️ Increments & Deload"):
                     c1, c2 = st.columns(2)
@@ -152,7 +151,7 @@ with tab_plan:
         st.session_state.my_plan[f"Day {len(st.session_state.my_plan)+1}"] = [{"name": "New Exercise", "sets": [3]*st.session_state.cycle_weeks, "reps": [10]*st.session_state.cycle_weeks, "progression": def_prog.copy()}]
         st.rerun()
 
-# --- TAB 3: DATA & TAB 4: HISTORY (Simplified for Stability) ---
+# --- DATA & HISTORY ---
 with tab_data:
     st.header("Data Management")
     if st.session_state.training_logs:
