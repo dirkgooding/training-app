@@ -30,7 +30,6 @@ if 'my_plan' not in st.session_state:
 if 'training_logs' not in st.session_state: st.session_state.training_logs = {}
 if 'device_settings' not in st.session_state: st.session_state.device_settings = {}
 
-# --- TABS ---
 tab_train, tab_plan, tab_data, tab_calendar = st.tabs(["Training", "Planner", "Data Management", "History"])
 
 # --- TAB 1: TRAINING ---
@@ -88,9 +87,9 @@ with tab_plan:
 
     for d_key in list(st.session_state.my_plan.keys()):
         with st.expander(f"Edit: {d_key}", expanded=True):
-            new_day_name = st.text_input("Day Name:", value=d_key, key=f"ren_{d_key}")
-            if new_day_name != d_key and new_day_name.strip() != "":
-                st.session_state.my_plan[new_day_name] = st.session_state.my_plan.pop(d_key)
+            new_dn = st.text_input("Day Name:", value=d_key, key=f"ren_{d_key}")
+            if new_dn != d_key and new_dn.strip() != "":
+                st.session_state.my_plan[new_dn] = st.session_state.my_plan.pop(d_key)
                 st.rerun()
             
             ex_txt = "\n".join([e["name"] for e in st.session_state.my_plan[d_key]])
@@ -99,19 +98,20 @@ with tab_plan:
             
             upd_data = []
             for n in names:
-                st.markdown(f"**Setup: {n}**")
+                st.markdown(f"---")
+                st.markdown(f"#### Setup: {n}")
                 match = next((e for e in st.session_state.my_plan[d_key] if e["name"] == n), None)
                 o_sets = match["sets"] if match else [3] * st.session_state.cycle_weeks
                 o_reps = match["reps"] if match else [10] * st.session_state.cycle_weeks
                 o_prog = match["progression"].copy() if match else def_prog.copy()
 
-                type_options = ["Linear (Weight Only)", "Double Progression (Weight & Reps)", "Reps Only", "Time (Seconds)"]
-                p_type = st.selectbox("Progression Model", type_options, index=type_options.index(o_prog["type"]), key=f"ptype_{d_key}_{n}")
+                p_type = st.selectbox("Progression Model", ["Linear (Weight Only)", "Double Progression (Weight & Reps)", "Reps Only", "Time (Seconds)"], index=["Linear (Weight Only)", "Double Progression (Weight & Reps)", "Reps Only", "Time (Seconds)"].index(o_prog["type"]), key=f"ptype_{d_key}_{n}")
                 
                 n_sets, n_reps = [], []
-                is_double = p_type in ["Double Progression (Weight & Reps)", "Reps Only"]
+                # Nur Double Progression nutzt die globale Sets/Min/Max Maske im Standard-Modus
+                use_min_max_mask = (p_type == "Double Progression (Weight & Reps)") and not st.session_state.expert_mode
                 
-                if is_double and not st.session_state.expert_mode:
+                if use_min_max_mask:
                     c1, c2, c3 = st.columns(3)
                     g_s = c1.number_input("Sets", 1, 15, int(o_prog.get("glob_sets", 3)), key=f"gs_{d_key}_{n}")
                     min_r = c2.number_input("Minimum Reps", 1, 300, int(o_prog.get("min_reps", 8)), key=f"minr_{d_key}_{n}")
@@ -119,33 +119,31 @@ with tab_plan:
                     n_sets, n_reps = [g_s] * st.session_state.cycle_weeks, [max_r] * st.session_state.cycle_weeks
                     o_prog.update({"glob_sets": g_s, "min_reps": min_r, "max_reps": max_r})
                 else:
+                    # Lineare Wochenansicht für Linear, Reps Only und Time
                     w_cols = st.columns(st.session_state.cycle_weeks)
                     label = "Sec Goal" if p_type == "Time (Seconds)" else "Rep Goal"
                     for w in range(st.session_state.cycle_weeks):
                         s_v = w_cols[w].number_input(f"Week {w+1} Sets", 1, 15, int(o_sets[w] if w < len(o_sets) else o_sets[-1]), key=f"s_{d_key}_{n}_{w}")
                         r_v = w_cols[w].number_input(f"Week {w+1} {label}", 1, 300, int(o_reps[w] if w < len(o_reps) else o_reps[-1]), key=f"r_{d_key}_{n}_{w}")
                         n_sets.append(s_v); n_reps.append(r_v)
-                    if is_double:
-                        c1, c2 = st.columns(2)
-                        o_prog["min_reps"] = c1.number_input("Minimum Reps", 1, 300, int(o_prog.get("min_reps", 8)), key=f"minr_e_{d_key}_{n}")
-                        o_prog["max_reps"] = c2.number_input("Maximum Reps", 1, 300, int(o_prog.get("max_reps", 12)), key=f"maxr_e_{d_key}_{n}")
 
-                with st.expander("⚙️ Increments & Deload"):
+                with st.expander("⚙️ Increments & Logic"):
                     c1, c2 = st.columns(2)
-                    if "Weight" in p_type: o_prog["inc_weight"] = c1.number_input("Weight Increment", 0.0, 50.0, float(o_prog["inc_weight"]), 1.25, key=f"iw_{d_key}_{n}")
-                    if "Rep" in p_type: o_prog["inc_reps"] = c1.number_input("Rep Increment", 0, 20, int(o_prog["inc_reps"]), 1, key=f"ir_{d_key}_{n}")
-                    if "Time" in p_type: o_prog["inc_sec"] = c1.number_input("Time Increment", 0, 100, int(o_prog["inc_sec"]), 1, key=f"is_{d_key}_{n}")
-                    o_prog["freq_inc"] = c2.number_input("Increase Frequency", 1, 10, int(o_prog["freq_inc"]), key=f"fi_{d_key}_{n}")
-                    o_prog["freq_del"] = c2.number_input("Deload Frequency", 1, 10, int(o_prog["freq_del"]), key=f"fd_{d_key}_{n}")
+                    if "Weight" in p_type: 
+                        o_prog["inc_weight"] = c1.number_input("Weight added after Success", 0.0, 50.0, float(o_prog["inc_weight"]), 1.25, key=f"iw_{d_key}_{n}")
+                    if "Rep" in p_type or p_type == "Reps Only": 
+                        o_prog["inc_reps"] = c1.number_input("Reps added after Success", 0, 20, int(o_prog["inc_reps"]), 1, key=f"ir_{d_key}_{n}")
+                    if "Time" in p_type: 
+                        o_prog["inc_sec"] = c1.number_input("Seconds added after Success", 0, 100, int(o_prog["inc_sec"]), 1, key=f"is_{d_key}_{n}")
+                    
+                    o_prog["freq_inc"] = c2.number_input("Successful Weeks until Increase", 1, 10, int(o_prog["freq_inc"]), key=f"fi_{d_key}_{n}")
+                    o_prog["freq_del"] = c2.number_input("Failed Weeks until Deload", 1, 10, int(o_prog["freq_del"]), key=f"fd_{d_key}_{n}")
                 
                 o_prog["type"] = p_type
                 upd_data.append({"name": n, "sets": n_sets, "reps": n_reps, "progression": o_prog})
-            
             st.session_state.my_plan[d_key] = upd_data
             if st.button("Delete Day", key=f"del_day_{d_key}"):
-                if len(st.session_state.my_plan) > 1:
-                    st.session_state.my_plan.pop(d_key)
-                    st.rerun()
+                if len(st.session_state.my_plan) > 1: st.session_state.my_plan.pop(d_key); st.rerun()
 
     if st.button("Add New Training Day"):
         st.session_state.my_plan[f"Day {len(st.session_state.my_plan)+1}"] = [{"name": "New Exercise", "sets": [3]*st.session_state.cycle_weeks, "reps": [10]*st.session_state.cycle_weeks, "progression": def_prog.copy()}]
@@ -153,15 +151,11 @@ with tab_plan:
 
 # --- DATA & HISTORY ---
 with tab_data:
-    st.header("Data Management")
     if st.session_state.training_logs:
         df = pd.DataFrame([{"Date": v["ts"], "Week": k.split("_")[0], "Day": k.split("_")[1], "Exercise": k.split("_")[2], "Set": k.split("_")[3], "Weight": v["kg"], "Reps": v["r"], "RIR": v["rir"], "Pain": v["p"]} for k,v in st.session_state.training_logs.items() if v["done"]])
-        if not df.empty:
-            st.download_button("Download CSV", df.to_csv(index=False, sep=";"), "training.csv", "text/csv")
-            st.dataframe(df)
+        if not df.empty: st.download_button("Download CSV", df.to_csv(index=False, sep=";"), "training.csv", "text/csv"); st.dataframe(df)
 
 with tab_calendar:
-    st.header("History")
     if st.session_state.training_logs:
         for k, v in st.session_state.training_logs.items():
             if v["done"]: st.write(f"{v['ts']} - {k.replace('_',' ')}: {v['kg']}kg x {v['r']}")
