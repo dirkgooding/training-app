@@ -118,27 +118,44 @@ with tab_prog:
     with col_strat1:
         st.session_state.cycle_weeks = st.number_input("Cycle Duration (Weeks)", 1, 12, st.session_state.cycle_weeks)
     with col_strat2:
-        current_keys = list(st.session_state.my_plan.keys())
-        current_num_days = len(current_keys)
-        new_num_days = st.number_input("Number of training days", 1, 7, current_num_days, key="num_days_input")
-        
-        if new_num_days > current_num_days:
-            for i in range(current_num_days + 1, new_num_days + 1):
-                st.session_state.my_plan[f"Day {i}"] = []
-            st.rerun()
-        elif new_num_days < current_num_days:
-            last_day_key = current_keys[-1]
-            if not st.session_state.my_plan[last_day_key]:
-                st.session_state.my_plan.pop(last_day_key)
-                st.rerun()
-            else:
-                st.warning(f"Warning: '{last_day_key}' contains exercises. Do you really want to delete it?")
-                c_del1, c_del2 = st.columns(2)
-                if c_del1.button("Confirm Deletion", key="confirm_global_del", use_container_width=True):
+        # Callback to handle changes before UI updates
+        def on_days_change():
+            new_val = st.session_state.num_days_widget
+            curr_val = len(st.session_state.my_plan)
+            if new_val < curr_val:
+                last_day_key = list(st.session_state.my_plan.keys())[-1]
+                if st.session_state.my_plan[last_day_key]:
+                    st.session_state.pending_global_del = True
+                    st.session_state.num_days_widget = curr_val # Restore visually immediately
+                else:
                     st.session_state.my_plan.pop(last_day_key)
-                    st.rerun()
-                if c_del2.button("Cancel", key="cancel_global_del", use_container_width=True):
-                    st.rerun()
+            elif new_val > curr_val:
+                for i in range(curr_val + 1, new_val + 1):
+                    st.session_state.my_plan[f"Day {i}"] = []
+
+        current_num_days = len(st.session_state.my_plan)
+        if "num_days_widget" not in st.session_state:
+            st.session_state.num_days_widget = current_num_days
+            
+        # Sync widget if a day was deleted via inner buttons
+        if not st.session_state.get("pending_global_del", False):
+            if st.session_state.num_days_widget != current_num_days:
+                st.session_state.num_days_widget = current_num_days
+
+        st.number_input("Number of training days", 1, 7, key="num_days_widget", on_change=on_days_change)
+        
+        if st.session_state.get("pending_global_del", False):
+            last_day_key = list(st.session_state.my_plan.keys())[-1]
+            st.warning(f"Warning: '{last_day_key}' contains exercises. Do you really want to delete it?")
+            c_del1, c_del2 = st.columns(2)
+            if c_del1.button("Confirm Deletion", key="confirm_global_del", use_container_width=True):
+                st.session_state.my_plan.pop(last_day_key)
+                st.session_state.pending_global_del = False
+                st.session_state.num_days_widget = len(st.session_state.my_plan)
+                st.rerun()
+            if c_del2.button("Cancel", key="cancel_global_del", use_container_width=True):
+                st.session_state.pending_global_del = False
+                st.rerun()
 
     strategies = ["No automatic deload", "Use last week of cycle as deload", "Add deload week after cycle"]
     st.session_state.deload_strategy = st.selectbox("Deload Strategy", strategies, index=strategies.index(st.session_state.deload_strategy))
