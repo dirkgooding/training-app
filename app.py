@@ -164,4 +164,14 @@ with tab_plan:
 
                 with st.expander("Progression logic and increments"):
                     l1, l2 = st.columns(2)
-                    o_prog["inc_weight"] = l1.number_input("Weight increment", 0.0, 50.0, float(o_prog
+                    o_prog["inc_weight"] = l1.number_input("Weight increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), 0.25, key=f"iw_{d_key}_{n}")
+                    o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{n}")
+                    o_prog["freq_del"] = l2.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{n}")
+
+                o_prog["type"] = p_type
+                upd_data.append({"name": n, "sets": n_sets, "reps": n_reps, "progression": o_prog})
+            st.session_state.my_plan[d_key] = upd_data
+
+    if st.button("Add New Training Day"):
+        st.session_state.my_plan[f"Day {len(st.session_state.my_plan)+1}"] = []
+        st.rerun()
