@@ -64,46 +64,56 @@ with tab_train:
             with c_n2:
                 st.text_input(f"Note", key=f"note_{ex['name']}_{w_label}_{selected_day}")
 
-            cols = st.columns([1, 2, 2, 2, 3, 1])
-            cols[0].caption("Set")
-            
-            # Dynamische Spaltenüberschriften nach deinen Vorgaben
-            if p_type == "Linear Time":
-                cols[1].caption("Time (sec)")
-            elif p_type == "Linear Reps":
-                cols[1].caption("Reps")
+            # DYNAMISCHES SPALTEN-LAYOUT FÜR DIE ÜBERSCHRIFTEN
+            if p_type in ["Linear Time", "Linear Reps"]:
+                cols = st.columns([1, 4, 2, 3, 1])
+                cols[0].caption("Set")
+                cols[1].caption("Time (sec)" if p_type == "Linear Time" else "Reps")
+                cols[2].caption("RIR")
+                cols[3].caption("Pain")
+                cols[4].caption("Done")
             else:
+                cols = st.columns([1, 2, 2, 2, 3, 1])
+                cols[0].caption("Set")
                 cols[1].caption("Weight")
                 cols[2].caption("Reps")
-                
-            cols[3].caption("RIR")
-            cols[4].caption("Pain")
-            cols[5].caption("Done")
+                cols[3].caption("RIR")
+                cols[4].caption("Pain")
+                cols[5].caption("Done")
 
             start_w = ex["progression"].get("start_weight", 20.0)
 
             for s in range(1, c_sets + 1):
-                s_cols = st.columns([1, 2, 2, 2, 3, 1])
+                # DYNAMISCHES SPALTEN-LAYOUT FÜR DIE EINGABEFELDER
+                if p_type in ["Linear Time", "Linear Reps"]:
+                    s_cols = st.columns([1, 4, 2, 3, 1])
+                else:
+                    s_cols = st.columns([1, 2, 2, 2, 3, 1])
+                    
                 l_key = f"{w_label}_{selected_day}_{ex['name']}_{s}"
-                
-                # Wir holen den Log oder setzen Fallbacks
                 cur_l = st.session_state.training_logs.get(l_key, {"kg": start_w, "r": c_reps, "rir": 2, "p": 0, "done": False, "ts": ""})
+                
                 s_cols[0].write(f"{s}")
                 
-                # Dynamische Eingabefelder je nach Typ
+                # Zuweisung der Eingabefelder je nach Spalten-Raster
                 if p_type == "Linear Time":
                     r_r = s_cols[1].number_input("Time", value=int(cur_l["r"]), step=5, key=f"t_in_{l_key}", label_visibility="collapsed")
                     r_kg = float(cur_l["kg"])
+                    r_rir = s_cols[2].number_input("RIR", value=int(cur_l["rir"]), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
+                    r_p = s_cols[3].selectbox("Pain", options=[0, 1, 2], index=int(cur_l["p"]), key=f"p_in_{l_key}", label_visibility="collapsed")
+                    r_done = s_cols[4].checkbox("Done", value=cur_l["done"], key=f"done_in_{l_key}", label_visibility="collapsed")
                 elif p_type == "Linear Reps":
                     r_r = s_cols[1].number_input("Reps", value=int(cur_l["r"]), step=1, key=f"r_in_{l_key}", label_visibility="collapsed")
                     r_kg = float(cur_l["kg"])
+                    r_rir = s_cols[2].number_input("RIR", value=int(cur_l["rir"]), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
+                    r_p = s_cols[3].selectbox("Pain", options=[0, 1, 2], index=int(cur_l["p"]), key=f"p_in_{l_key}", label_visibility="collapsed")
+                    r_done = s_cols[4].checkbox("Done", value=cur_l["done"], key=f"done_in_{l_key}", label_visibility="collapsed")
                 else:
                     r_kg = s_cols[1].number_input("Weight", value=float(cur_l["kg"]), step=0.25, format="%.2f", key=f"w_in_{l_key}", label_visibility="collapsed")
                     r_r = s_cols[2].number_input("Reps", value=int(cur_l["r"]), step=1, key=f"r_in_{l_key}", label_visibility="collapsed")
-                
-                r_rir = s_cols[3].number_input("RIR", value=int(cur_l["rir"]), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
-                r_p = s_cols[4].selectbox("Pain", options=[0, 1, 2], index=int(cur_l["p"]), key=f"p_in_{l_key}", label_visibility="collapsed")
-                r_done = s_cols[5].checkbox("Done", value=cur_l["done"], key=f"done_in_{l_key}", label_visibility="collapsed")
+                    r_rir = s_cols[3].number_input("RIR", value=int(cur_l["rir"]), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
+                    r_p = s_cols[4].selectbox("Pain", options=[0, 1, 2], index=int(cur_l["p"]), key=f"p_in_{l_key}", label_visibility="collapsed")
+                    r_done = s_cols[5].checkbox("Done", value=cur_l["done"], key=f"done_in_{l_key}", label_visibility="collapsed")
                 
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M") if r_done and not cur_l["done"] else (cur_l["ts"] if r_done else "")
                 st.session_state.training_logs[l_key] = {"kg": r_kg, "r": r_r, "rir": r_rir, "p": r_p, "done": r_done, "ts": ts}
@@ -176,7 +186,6 @@ with tab_plan:
                         c1, c2, c3, c4 = st.columns(4)
                         g_s = c1.number_input("Sets per session", 1, 15, int(o_prog.get("glob_sets", 3)), key=f"gs_{d_key}_{n}")
                         
-                        # Dynamische Start- und Zielwerte nach deinen Vorgaben (ohne unsinnige Targets bei Linear Reps/Time)
                         if p_type == "Double Progression":
                             o_prog["start_weight"] = c2.number_input("Starting Weight (kg)", 0.0, 500.0, float(o_prog.get("start_weight", 20.0)), step=1.25, format="%.2f", key=f"sw_{d_key}_{n}")
                             o_prog["min_reps"] = c3.number_input("Minimum Reps", 1, 300, int(o_prog.get("min_reps", 8)), key=f"minr_{d_key}_{n}")
@@ -202,7 +211,6 @@ with tab_plan:
                             n_sets = [g_s] * st.session_state.cycle_weeks
                         o_prog["glob_sets"] = g_s
 
-                    # Progression fields directly visible
                     l1, l2 = st.columns(2)
                     if "Time" in p_type:
                         inc_label, inc_step = "Time increment (sec)", 5.0
