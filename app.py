@@ -120,8 +120,6 @@ with tab_prog:
     with col_strat2:
         current_keys = list(st.session_state.my_plan.keys())
         current_num_days = len(current_keys)
-        
-        # Use a temporary key for the input to handle cancellation
         new_num_days = st.number_input("Number of training days", 1, 7, current_num_days, key="num_days_input")
         
         if new_num_days > current_num_days:
@@ -130,19 +128,16 @@ with tab_prog:
             st.rerun()
         elif new_num_days < current_num_days:
             last_day_key = current_keys[-1]
-            # Check if the day slated for removal has exercises
             if not st.session_state.my_plan[last_day_key]:
                 st.session_state.my_plan.pop(last_day_key)
                 st.rerun()
             else:
-                # Show safety warning
                 st.warning(f"Warning: '{last_day_key}' contains exercises. Do you really want to delete it?")
                 c_del1, c_del2 = st.columns(2)
                 if c_del1.button("Confirm Deletion", key="confirm_global_del", use_container_width=True):
                     st.session_state.my_plan.pop(last_day_key)
                     st.rerun()
                 if c_del2.button("Cancel", key="cancel_global_del", use_container_width=True):
-                    # Reset the input value by rerunning (it will revert to the length of my_plan)
                     st.rerun()
 
     strategies = ["No automatic deload", "Use last week of cycle as deload", "Add deload week after cycle"]
