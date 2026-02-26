@@ -11,22 +11,26 @@ if 'deload_strategy' not in st.session_state: st.session_state.deload_strategy =
 if 'deload_intensity' not in st.session_state: st.session_state.deload_intensity = 50
 if 'reduce_sets_deload' not in st.session_state: st.session_state.reduce_sets_deload = False
 
-def_prog_linear = {
+# Basis-Vorlagen mit passenden Inkrementen
+def_prog_weight = {
     "type": "Linear Weight", 
     "inc_weight": 1.25, "inc_reps": 1, "inc_sec": 5, 
     "freq_inc": 1, "freq_del": 2,
     "min_reps": 8, "max_reps": 12, "glob_sets": 3, "glob_reps": 10
 }
 
+def_prog_reps = {**def_prog_weight, "type": "Linear Reps", "inc_weight": 1.0}
+def_prog_time = {**def_prog_weight, "type": "Linear Time", "inc_weight": 5.0}
+
 if 'my_plan' not in st.session_state: 
     st.session_state.my_plan = {
         "Day 1": [
-            {"name": "Linear Weight Exercise", "sets": [3]*4, "reps": [10]*4, "progression": def_prog_linear.copy()}, 
-            {"name": "Linear Reps Exercise", "sets": [3]*4, "reps": [10]*4, "progression": {**def_prog_linear, "type": "Linear Reps"}}
+            {"name": "Linear Weight Exercise", "sets": [3]*4, "reps": [10]*4, "progression": def_prog_weight.copy()}, 
+            {"name": "Linear Reps Exercise", "sets": [3]*4, "reps": [10]*4, "progression": def_prog_reps.copy()}
         ], 
         "Day 2": [
-            {"name": "Linear Time Exercise", "sets": [3]*4, "reps": [10]*4, "progression": {**def_prog_linear, "type": "Linear Time"}}, 
-            {"name": "Double Progression Exercise", "sets": [3]*4, "reps": [10]*4, "progression": {**def_prog_linear, "type": "Double Progression"}}
+            {"name": "Linear Time Exercise", "sets": [3]*4, "reps": [10]*4, "progression": def_prog_time.copy()}, 
+            {"name": "Double Progression Exercise", "sets": [3]*4, "reps": [10]*4, "progression": {**def_prog_weight, "type": "Double Progression"}}
         ]
     }
 
@@ -123,7 +127,7 @@ with tab_plan:
                 st.markdown(f"---")
                 st.markdown(f"#### Setup: {n}")
                 match = next((e for e in st.session_state.my_plan[d_key] if e["name"] == n), None)
-                o_prog = match["progression"].copy() if match else def_prog_linear.copy()
+                o_prog = match["progression"].copy() if match else def_prog_weight.copy()
                 
                 prog_options = ["Linear Weight", "Linear Reps", "Linear Time", "Double Progression", "Expert Matrix"]
                 p_type = st.selectbox("Choose your progression model", prog_options, index=prog_options.index(o_prog["type"]) if o_prog["type"] in prog_options else 0, key=f"ptype_{d_key}_{n}")
@@ -159,8 +163,6 @@ with tab_plan:
 
                 with st.expander("Progression logic and increments"):
                     l1, l2 = st.columns(2)
-                    
-                    # Logik für dynamische Labels und Steps
                     if "Time" in p_type:
                         inc_label, inc_step = "Time increment (sec)", 5.0
                     elif "Reps" in p_type:
