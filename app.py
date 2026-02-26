@@ -42,7 +42,6 @@ if 'training_logs' not in st.session_state: st.session_state.training_logs = {}
 if 'device_settings' not in st.session_state: st.session_state.device_settings = {}
 
 # --- TABS ---
-# CHANGED: "Pain Management" moved to follow "Progression"
 tab_work, tab_prog, tab_progr, tab_pain, tab_warm, tab_rest, tab_data, tab_hist = st.tabs([
     "Workouts", "Program", "Progression", "Pain Management", "Warmups", "Rest Timer", "Data", "History"
 ])
@@ -235,12 +234,13 @@ with tab_progr:
                     
                     st.markdown("---")
                     l1, l2, l3 = st.columns(3)
+                    # UPDATED Labels according to Option 1
                     if "Time" in p_type:
-                        inc_label, inc_step = "Time increment (sec)", 5.0
+                        inc_label, inc_step = "Increase time by (sec)", 5.0
                     elif "Reps" in p_type:
-                        inc_label, inc_step = "Reps increment", 1.0
+                        inc_label, inc_step = "Increase reps by", 1.0
                     else:
-                        inc_label, inc_step = "Weight increment", 0.25
+                        inc_label, inc_step = "Increase weight by", 0.25
                     
                     o_prog["inc_weight"] = l1.number_input(inc_label, 0.0, 300.0, float(o_prog.get("inc_weight", 1.25)), inc_step, format="%.2f", key=f"iw_{d_key}_{ex['name']}")
                     o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{ex['name']}")
