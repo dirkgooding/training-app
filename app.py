@@ -42,8 +42,8 @@ if 'training_logs' not in st.session_state: st.session_state.training_logs = {}
 if 'device_settings' not in st.session_state: st.session_state.device_settings = {}
 
 # --- TABS ---
-tab_work, tab_prog, tab_progr, tab_warm, tab_rest, tab_data, tab_hist = st.tabs([
-    "Workouts", "Program", "Progression", "Warmups", "Rest Timer", "Data", "History"
+tab_work, tab_prog, tab_progr, tab_warm, tab_rest, tab_data, tab_hist, tab_pain = st.tabs([
+    "Workouts", "Program", "Progression", "Warmups", "Rest Timer", "Data", "History", "Pain Management"
 ])
 
 # --- TAB 1: WORKOUTS ---
@@ -65,9 +65,10 @@ with tab_work:
             
             c_n1, c_n2 = st.columns(2)
             with c_n1:
-                st.session_state.device_settings[ex['name']] = st.text_input(f"Settings", value=st.session_state.device_settings.get(ex['name'], ""), key=f"dev_{ex['name']}_{selected_day}")
+                # CHANGED: Reverted to the original long label
+                st.session_state.device_settings[ex['name']] = st.text_input("Exercise Settings and Machine Setup", value=st.session_state.device_settings.get(ex['name'], ""), key=f"dev_{ex['name']}_{selected_day}")
             with c_n2:
-                st.text_input(f"Note", key=f"note_{ex['name']}_{w_label}_{selected_day}")
+                st.text_input("Note", key=f"note_{ex['name']}_{w_label}_{selected_day}")
 
             # SYMMETRIC GRID (1:1:1:1:1:1:1)
             cols = st.columns([1, 1, 1, 1, 1, 1, 1])
@@ -118,7 +119,6 @@ with tab_prog:
     with col_strat1:
         st.session_state.cycle_weeks = st.number_input("Cycle Duration (Weeks)", 1, 12, st.session_state.cycle_weeks)
     with col_strat2:
-        # Callback to handle changes before UI updates
         def on_days_change():
             new_val = st.session_state.num_days_widget
             curr_val = len(st.session_state.my_plan)
@@ -126,7 +126,7 @@ with tab_prog:
                 last_day_key = list(st.session_state.my_plan.keys())[-1]
                 if st.session_state.my_plan[last_day_key]:
                     st.session_state.pending_global_del = True
-                    st.session_state.num_days_widget = curr_val # Restore visually immediately
+                    st.session_state.num_days_widget = curr_val
                 else:
                     st.session_state.my_plan.pop(last_day_key)
             elif new_val > curr_val:
@@ -137,7 +137,6 @@ with tab_prog:
         if "num_days_widget" not in st.session_state:
             st.session_state.num_days_widget = current_num_days
             
-        # Sync widget if a day was deleted via inner buttons
         if not st.session_state.get("pending_global_del", False):
             if st.session_state.num_days_widget != current_num_days:
                 st.session_state.num_days_widget = current_num_days
@@ -272,3 +271,8 @@ with tab_hist:
                 st.write(f"**{v['ts']}** - {k.replace('_',' ')}: {v['kg']}kg x {v['r']} (Type: {v['type']})")
     else:
         st.info("No history available yet. Complete a set to see it here.")
+
+# --- TAB 8: PAIN MANAGEMENT ---
+with tab_pain:
+    st.header("Pain Management")
+    st.info("Analytics and insights for your pain thresholds will appear here.")
