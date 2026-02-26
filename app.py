@@ -73,7 +73,7 @@ with tab_train:
                 cur_l = st.session_state.training_logs.get(l_key, {"kg": 20.0, "r": c_reps, "rir": 2, "p": 0, "done": False, "ts": ""})
                 
                 s_cols[0].write(f"{s}")
-                r_kg = s_cols[1].number_input("Weight", value=float(cur_l["kg"]), step=1.25, key=f"w_in_{l_key}", label_visibility="collapsed")
+                r_kg = s_cols[1].number_input("Weight", value=float(cur_l["kg"]), step=0.25, format="%.2f", key=f"w_in_{l_key}", label_visibility="collapsed")
                 r_r = s_cols[2].number_input("Reps", value=int(cur_l["r"]), step=1, key=f"r_in_{l_key}", label_visibility="collapsed")
                 r_rir = s_cols[3].number_input("RIR", value=int(cur_l["rir"]), step=1, key=f"rir_in_{l_key}", label_visibility="collapsed")
                 r_p = s_cols[4].selectbox("Pain", options=[0, 1, 2], index=int(cur_l["p"]), key=f"p_in_{l_key}", label_visibility="collapsed")
@@ -159,7 +159,7 @@ with tab_plan:
 
                 with st.expander("Progression logic and increments"):
                     l1, l2 = st.columns(2)
-                    o_prog["inc_weight"] = l1.number_input("Weight increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), 0.25, key=f"iw_{d_key}_{n}")
+                    o_prog["inc_weight"] = l1.number_input("Weight increment", 0.0, 50.0, float(o_prog.get("inc_weight", 1.25)), 0.25, format="%.2f", key=f"iw_{d_key}_{n}")
                     o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{n}")
                     o_prog["freq_del"] = l2.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{n}")
 
