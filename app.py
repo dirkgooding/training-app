@@ -167,18 +167,18 @@ with tab_plan:
                             n_sets = [g_s] * st.session_state.cycle_weeks
                         o_prog["glob_sets"] = g_s
 
-                    with st.expander("Progression logic and increments"):
-                        l1, l2 = st.columns(2)
-                        if "Time" in p_type:
-                            inc_label, inc_step = "Time increment (sec)", 5.0
-                        elif "Reps" in p_type:
-                            inc_label, inc_step = "Reps increment", 1.0
-                        else:
-                            inc_label, inc_step = "Weight increment", 0.25
-                        
-                        o_prog["inc_weight"] = l1.number_input(inc_label, 0.0, 300.0, float(o_prog.get("inc_weight", 1.25)), inc_step, format="%.2f", key=f"iw_{d_key}_{n}")
-                        o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{n}")
-                        o_prog["freq_del"] = l2.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{n}")
+                    # Progression fields directly visible
+                    l1, l2 = st.columns(2)
+                    if "Time" in p_type:
+                        inc_label, inc_step = "Time increment (sec)", 5.0
+                    elif "Reps" in p_type:
+                        inc_label, inc_step = "Reps increment", 1.0
+                    else:
+                        inc_label, inc_step = "Weight increment", 0.25
+                    
+                    o_prog["inc_weight"] = l1.number_input(inc_label, 0.0, 300.0, float(o_prog.get("inc_weight", 1.25)), inc_step, format="%.2f", key=f"iw_{d_key}_{n}")
+                    o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{n}")
+                    o_prog["freq_del"] = l2.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{n}")
 
                     o_prog["type"] = p_type
                     upd_data.append({"name": n, "sets": n_sets, "reps": n_reps, "progression": o_prog})
