@@ -52,7 +52,7 @@ with tab_train:
             
             c_n1, c_n2 = st.columns(2)
             with c_n1:
-                st.session_state.device_settings[ex['name']] = st.text_input(f"Exercise Setup", value=st.session_state.device_settings.get(ex['name'], ""), key=f"dev_{ex['name']}_{selected_day}")
+                st.session_state.device_settings[ex['name']] = st.text_input(f"Exercise & Equipment Settings", value=st.session_state.device_settings.get(ex['name'], ""), key=f"dev_{ex['name']}_{selected_day}")
             with c_n2:
                 st.text_input(f"Note", key=f"note_{ex['name']}_{w_label}_{selected_day}")
 
@@ -132,7 +132,7 @@ with tab_plan:
                         o_prog["max_reps"] = c3.number_input("Maximum Reps", 1, 300, int(o_prog.get("max_reps", 12)), key=f"maxr_{d_key}_{n}")
                         n_reps = [o_prog["max_reps"]] * st.session_state.cycle_weeks
                     else:
-                        unit_label = "Goal"
+                        unit_label = "Rep Goal"
                         o_prog["glob_reps"] = c2.number_input(unit_label, 1, 300, int(o_prog.get("glob_reps", 10)), key=f"gr_{d_key}_{n}")
                         n_reps = [o_prog["glob_reps"]] * st.session_state.cycle_weeks
                     
