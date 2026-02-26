@@ -83,7 +83,7 @@ with tab_work:
             for s in range(1, c_sets + 1):
                 s_cols = st.columns([1, 1, 1, 1, 1, 1, 1])
                 l_key = f"{w_label}_{selected_day}_{ex['name']}_{s}"
-                default_rest = st.session_state.rest_defaults.get(ex["name"], "1:30")
+                default_rest = st.session_state.rest_defaults.get(f"{ex['name']}_sets", "1:30")
                 cur_l = st.session_state.training_logs.get(l_key, {"kg": start_w, "r": c_reps, "rir": 2, "p": 0, "rest": default_rest, "done": False, "type": str(s), "ts": ""})
                 
                 s_type_options = [str(s), "𝘞", "𝘋", "𝘍", "𝘙/𝘗", "𝘔"]
@@ -234,7 +234,6 @@ with tab_progr:
                     
                     st.markdown("---")
                     l1, l2, l3 = st.columns(3)
-                    # UPDATED Labels according to Option 1
                     if "Time" in p_type:
                         inc_label, inc_step = "Increase time by (sec)", 5.0
                     elif "Reps" in p_type:
@@ -265,9 +264,27 @@ with tab_rest:
     st.header("Rest Timer Settings")
     for d_key, exercises in st.session_state.my_plan.items():
         for ex in exercises:
-            col1, col2 = st.columns([3, 1])
-            col1.write(f"**{ex['name']}**")
-            st.session_state.rest_defaults[ex['name']] = col2.text_input("Default Rest", value=st.session_state.rest_defaults.get(ex['name'], "1:30"), key=f"res_{ex['name']}")
+            st.markdown(f"**{ex['name']}**")
+            c1, c2, c3 = st.columns(3)
+            
+            st.session_state.rest_defaults[f"{ex['name']}_sets"] = c1.text_input(
+                "Rest between Sets", 
+                value=st.session_state.rest_defaults.get(f"{ex['name']}_sets", "1:30"), 
+                key=f"res_s_{ex['name']}_{d_key}"
+            )
+            
+            st.session_state.rest_defaults[f"{ex['name']}_warmup"] = c2.text_input(
+                "Rest between Warmup Sets", 
+                value=st.session_state.rest_defaults.get(f"{ex['name']}_warmup", "1:00"), 
+                key=f"res_w_{ex['name']}_{d_key}"
+            )
+            
+            st.session_state.rest_defaults[f"{ex['name']}_dropset"] = c3.text_input(
+                "Rest between Drop Sets", 
+                value=st.session_state.rest_defaults.get(f"{ex['name']}_dropset", "0:30"), 
+                key=f"res_d_{ex['name']}_{d_key}"
+            )
+            st.divider()
 
 # --- TAB 7: DATA ---
 with tab_data:
