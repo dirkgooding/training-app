@@ -85,20 +85,21 @@ with tab_train:
 
 # --- TAB 2: PLANNER ---
 with tab_plan:
-    st.header("Cycle Configuration")
+    st.header("Training Cycle Configuration")
     st.markdown("Set the duration of your training phase and decide how to handle the deload.")
     
     row1_col1, row1_col2 = st.columns(2)
     with row1_col1:
-        st.session_state.cycle_weeks = st.number_input("Number of weeks for this cycle", 1, 12, st.session_state.cycle_weeks)
+        st.session_state.cycle_weeks = st.number_input("Number of weeks for this training cycle", 1, 12, st.session_state.cycle_weeks)
     with row1_col2:
+        strategies = ["No automatic deload", "Use last week of cycle as deload", "Add deload week after cycle"]
         st.session_state.deload_strategy = st.selectbox("Select deload strategy", 
-            ["No automatic deload", "Use last week of cycle as deload", "Append deload week after cycle"],
-            index=["No automatic deload", "Use last week of cycle as deload", "Append deload week after cycle"].index(st.session_state.deload_strategy))
+            strategies,
+            index=strategies.index(st.session_state.deload_strategy))
     
     row2_col1, row2_col2 = st.columns(2)
     with row2_col1:
-        st.session_state.deload_intensity = st.slider("Deload intensity (%)", 10, 100, st.session_state.deload_intensity)
+        st.session_state.deload_intensity = st.slider("Percentage of training weight for deload week (%)", 10, 100, st.session_state.deload_intensity, step=10)
     with row2_col2:
         st.write("") # Spacer
         st.session_state.reduce_sets_deload = st.checkbox("Reduce number of sets by 50%", 
@@ -145,7 +146,7 @@ with tab_plan:
                         n_sets.append(s_v); n_reps.append(r_v)
                 else:
                     c1, c2, c3 = st.columns(3)
-                    g_s = c1.number_input("Number of sets for this cycle", 1, 15, int(o_prog.get("glob_sets", 3)), key=f"gs_{d_key}_{n}")
+                    g_s = c1.number_input("Number of sets for this training cycle", 1, 15, int(o_prog.get("glob_sets", 3)), key=f"gs_{d_key}_{n}")
                     if p_type == "Double Progression":
                         o_prog["min_reps"] = c2.number_input("Minimum Reps", 1, 300, int(o_prog.get("min_reps", 8)), key=f"minr_{d_key}_{n}")
                         o_prog["max_reps"] = c3.number_input("Maximum Reps", 1, 300, int(o_prog.get("max_reps", 12)), key=f"maxr_{d_key}_{n}")
