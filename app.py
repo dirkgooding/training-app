@@ -42,6 +42,16 @@ if 'my_plan' not in st.session_state:
 if 'training_logs' not in st.session_state: st.session_state.training_logs = {}
 if 'device_settings' not in st.session_state: st.session_state.device_settings = {}
 
+# --- WARMUP INITIALIZATION ---
+if "warmup_routines" not in st.session_state:
+    st.session_state.warmup_routines = {
+        "Standard Warmup": [
+            {"percent": 50, "reps": 10},
+            {"percent": 70, "reps": 5},
+            {"percent": 90, "reps": 2},
+        ]
+    }
+
 # --- TABS ---
 tab_work, tab_prog, tab_progr, tab_pain, tab_warm, tab_rest, tab_data, tab_hist = st.tabs([
     "Workouts", "Program", "Progression", "Pain Management", "Warmups", "Rest Timer", "Data", "History"
