@@ -224,6 +224,17 @@ with tab_progr:
             for i, ex in enumerate(st.session_state.my_plan[d_key]):
                 with st.container(border=True):
                     st.markdown(f"**{ex['name']}**")
+                    warmup_options = ["None"] + list(st.session_state.warmup_routines.keys())
+                    current_warmup = ex.get("warmup_routine", "None")
+
+                    selected_warmup = st.selectbox(
+                        "Warmup Routine",
+                        warmup_options,
+                        index=warmup_options.index(current_warmup) if current_warmup in warmup_options else 0,
+                        key=f"warmup_{d_key}_{ex['name']}"
+                    )
+
+                    ex["warmup_routine"] = selected_warmup
                     o_prog = ex["progression"]
                     prog_options = ["Linear Weight", "Linear Reps", "Linear Time", "Double Progression", "Expert Mode"]
                     p_type = st.selectbox("Progression Model", prog_options, index=prog_options.index(o_prog["type"]) if o_prog["type"] in prog_options else 0, key=f"ptype_{d_key}_{ex['name']}")
