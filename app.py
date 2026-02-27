@@ -57,9 +57,164 @@ tab_work, tab_prog, tab_progr, tab_pain, tab_warm, tab_rest, tab_data, tab_hist 
     "Workouts", "Program", "Progression", "Pain Management", "Warmups", "Rest Timer", "Data", "History"
 ])
 
-# ---------------------------
-# (TAB 1 und TAB 2 bleiben exakt wie bei dir)
-# ---------------------------
+# --- TAB 1: WORKOUTS ---
+with tab_work:
+    c_nav1, c_nav2 = st.columns(2)
+    with c_nav1:
+        w_idx = st.selectbox("Select Week:", range(st.session_state.cycle_weeks), format_func=lambda x: f"Week {x+1}")
+        w_label = f"Week {w_idx + 1}"
+    with c_nav2:
+        selected_day = st.selectbox("Select Day:", options=list(st.session_state.my_plan.keys()))
+
+    if selected_day in st.session_state.my_plan:
+        for i, ex in enumerate(st.session_state.my_plan[selected_day]):
+            c_sets = ex["sets"][w_idx] if w_idx < len(ex["sets"]) else ex["sets"][-1]
+            c_reps = ex["reps"][w_idx] if w_idx < len(ex["reps"]) else ex["reps"][-1]
+            p_type = ex["progression"].get("type", "Linear Weight")
+            
+            st.subheader(f"{i+1}. {ex['name']} ({c_sets} Sets | Goal: {c_reps})")
+            
+            c_n1, c_n2 = st.columns(2)
+            with c_n1:
+                st.session_state.device_settings[ex['name']] = st.text_input("Exercise Settings and Machine Setup", value=st.session_state.device_settings.get(ex['name'], ""), key=f"dev_{ex['name']}_{selected_day}")
+            with c_n2:
+                st.text_input("Note", key=f"note_{ex['name']}_{w_label}_{selected_day}")
+
+            cols = st.columns([1, 1, 1, 1, 1, 1, 1])
+            cols[0].caption("Set")
+            cols[1].caption("Weight")
+            cols[2].caption("Time/Reps")
+            cols[3].caption("RIR")
+            cols[4].caption("Pain")
+            cols[5].caption("Rest")
+            cols[6].caption("Done")
+
+            start_w = ex["progression"].get("start_weight", 20.0)
+
+            for s in range(1, c_sets + 1):
+                s_cols = st.columns([1, 1, 1, 1, 1, 1, 1])
+                l_key = f"{w_label}_{selected_day}_{ex['name']}_{s}"
+                default_rest = st.session_state.rest_defaults.get(f"{ex['name']}_sets", "1:30")
+                cur_l = st.session_state.training_logs.get(l_key, {"kg": start_w, "r": c_reps, "rir": 2, "p": 0, "rest": default_rest, "done": False, "type": str(s), "ts": ""})
+                
+                s_type_options = [str(s), "𝘞", "𝘋", "𝘍", "𝘙/𝘗", "𝘔"]
+                r_type = s_cols[0].selectbox("Type", s_type_options, index=s_type_options.index(cur_l.get("type", str(s))) if cur_l.get("type") in s_type_options else 0, key=f"type_{l_key}", label_visibility="collapsed")
+                
+                is_w_disabled = p_type in ["Linear Time", "Linear Reps"]
+                r_kg = s_cols[1].number_input("W", value=float(cur_l["kg"]), step=0.25, format="%.2f", key=f"w_{l_key}", label_visibility="collapsed", disabled=is_w_disabled)
+                
+                if "Time" in p_type:
+                    r_r = s_cols[2].number_input("T", value=int(cur_l["r"]), step=5, key=f"r_{l_key}", label_visibility="collapsed")
+                else:
+                    r_r = s_cols[2].number_input("R", value=int(cur_l["r"]), step=1, key=f"r_{l_key}", label_visibility="collapsed")
+                
+                r_rir = s_cols[3].number_input("RIR", 0, 10, int(cur_l["rir"]), key=f"rir_{l_key}", label_visibility="collapsed")
+                r_p = s_cols[4].selectbox("P", [0, 1, 2], index=int(cur_l["p"]), key=f"p_{l_key}", label_visibility="collapsed")
+                r_rest = s_cols[5].text_input("Res", value=cur_l.get("rest", default_rest), key=f"rest_{l_key}", label_visibility="collapsed")
+                r_done = s_cols[6].checkbox("OK", value=cur_l["done"], key=f"done_{l_key}", label_visibility="collapsed")
+                
+                ts = datetime.now().strftime("%Y-%m-%d %H:%M") if r_done and not cur_l["done"] else (cur_l["ts"] if r_done else "")
+                st.session_state.training_logs[l_key] = {"kg": r_kg, "r": r_r, "rir": r_rir, "p": r_p, "rest": r_rest, "done": r_done, "type": r_type, "ts": ts}
+            
+            if st.button("+ Add Set", key=f"add_{ex['name']}_{w_label}"):
+                st.session_state.my_plan[selected_day][i]["sets"][w_idx] += 1
+                st.rerun()
+            st.divider()
+
+# --- TAB 2: PROGRAM ---
+with tab_prog:
+    st.header("Program Strategy")
+    col_strat1, col_strat2 = st.columns(2)
+    with col_strat1:
+        st.session_state.cycle_weeks = st.number_input("Cycle Duration (Weeks)", 1, 12, st.session_state.cycle_weeks)
+    with col_strat2:
+        def on_days_change():
+            new_val = st.session_state.num_days_widget
+            curr_val = len(st.session_state.my_plan)
+            if new_val < curr_val:
+                last_day_key = list(st.session_state.my_plan.keys())[-1]
+                if st.session_state.my_plan[last_day_key]:
+                    st.session_state.pending_global_del = True
+                    st.session_state.num_days_widget = curr_val
+                else:
+                    st.session_state.my_plan.pop(last_day_key)
+            elif new_val > curr_val:
+                for i in range(curr_val + 1, new_val + 1):
+                    st.session_state.my_plan[f"Day {i}"] = []
+
+        current_num_days = len(st.session_state.my_plan)
+        if "num_days_widget" not in st.session_state:
+            st.session_state.num_days_widget = current_num_days
+            
+        if not st.session_state.get("pending_global_del", False):
+            if st.session_state.num_days_widget != current_num_days:
+                st.session_state.num_days_widget = current_num_days
+
+        st.number_input("Number of training days", 1, 7, key="num_days_widget", on_change=on_days_change)
+        
+        if st.session_state.get("pending_global_del", False):
+            last_day_key = list(st.session_state.my_plan.keys())[-1]
+            st.warning(f"Warning: '{last_day_key}' contains exercises. Do you really want to delete it?")
+            c_del1, c_del2 = st.columns(2)
+            if c_del1.button("Confirm Deletion", key="confirm_global_del", use_container_width=True):
+                st.session_state.my_plan.pop(last_day_key)
+                st.session_state.pending_global_del = False
+                st.session_state.num_days_widget = len(st.session_state.my_plan)
+                st.rerun()
+            if c_del2.button("Cancel", key="cancel_global_del", use_container_width=True):
+                st.session_state.pending_global_del = False
+                st.rerun()
+
+    strategies = ["No automatic deload", "Use last week of cycle as deload", "Add deload week after cycle"]
+    st.session_state.deload_strategy = st.selectbox("Deload Strategy", strategies, index=strategies.index(st.session_state.deload_strategy))
+    st.session_state.deload_intensity = st.slider("Deload Intensity (%)", 50, 100, st.session_state.deload_intensity, 10)
+    st.session_state.reduce_sets_deload = st.checkbox("Reduce sets by 50% during deload", st.session_state.reduce_sets_deload)
+
+    st.divider()
+    st.subheader("Manage Training Days & Exercises")
+    for d_key in list(st.session_state.my_plan.keys()):
+        with st.expander(f"Setup {d_key}", expanded=True):
+            c1, c2 = st.columns([4, 1])
+            new_dn = c1.text_input(f"Rename {d_key}", d_key, key=f"ren_{d_key}")
+            if new_dn != d_key and new_dn.strip() != "":
+                st.session_state.my_plan[new_dn] = st.session_state.my_plan.pop(d_key)
+                st.rerun()
+            
+            if c2.button("Delete", key=f"del_{d_key}"):
+                if len(st.session_state.my_plan) > 1:
+                    if not st.session_state.my_plan[d_key]:
+                        st.session_state.my_plan.pop(d_key)
+                        st.rerun()
+                    else:
+                        st.session_state[f"show_warn_{d_key}"] = True
+            
+            if st.session_state.get(f"show_warn_{d_key}", False):
+                st.error(f"'{d_key}' is not empty!")
+                cw1, cw2 = st.columns(2)
+                if cw1.button("Delete anyway", key=f"force_{d_key}"):
+                    st.session_state.my_plan.pop(d_key)
+                    st.session_state[f"show_warn_{d_key}"] = False
+                    st.rerun()
+                if cw2.button("Keep day", key=f"keep_{d_key}"):
+                    st.session_state[f"show_warn_{d_key}"] = False
+                    st.rerun()
+
+            ex_txt = "\n".join([e["name"] for e in st.session_state.my_plan[d_key]])
+            new_ex_txt = st.text_area(f"Exercises for {d_key} (one per line):", value=ex_txt, key=f"edit_exs_{d_key}")
+            names = [n.strip() for n in new_ex_txt.split("\n") if n.strip()]
+            
+            if names != [e["name"] for e in st.session_state.my_plan[d_key]]:
+                upd_data = []
+                for n in names:
+                    match = next((e for e in st.session_state.my_plan[d_key] if e["name"] == n), None)
+                    o_prog = match["progression"].copy() if match else def_prog_weight.copy()
+                    upd_data.append({"name": n, "sets": [3]*12, "reps": [10]*12, "progression": o_prog})
+                st.session_state.my_plan[d_key] = upd_data
+                st.rerun()
+
+    if st.button("Add New Training Day"):
+        st.session_state.my_plan[f"Day {len(st.session_state.my_plan)+1}"] = []
+        st.rerun()
 
 # --- TAB 3: PROGRESSION ---
 with tab_progr:
@@ -69,30 +224,10 @@ with tab_progr:
             for i, ex in enumerate(st.session_state.my_plan[d_key]):
                 with st.container(border=True):
                     st.markdown(f"**{ex['name']}**")
-
-                    # --- Warmup Dropdown ---
-                    warmup_options = ["None"] + list(st.session_state.warmup_routines.keys())
-                    current_warmup = ex.get("warmup_routine", "None")
-
-                    selected_warmup = st.selectbox(
-                        "Warmup Routine",
-                        warmup_options,
-                        index=warmup_options.index(current_warmup) if current_warmup in warmup_options else 0,
-                        key=f"warmup_{d_key}_{ex['name']}"
-                    )
-
-                    ex["warmup_routine"] = selected_warmup
-                    # --- End Warmup Dropdown ---
-
                     o_prog = ex["progression"]
                     prog_options = ["Linear Weight", "Linear Reps", "Linear Time", "Double Progression", "Expert Mode"]
-                    p_type = st.selectbox(
-                        "Progression Model",
-                        prog_options,
-                        index=prog_options.index(o_prog["type"]) if o_prog["type"] in prog_options else 0,
-                        key=f"ptype_{d_key}_{ex['name']}"
-                    )
-
+                    p_type = st.selectbox("Progression Model", prog_options, index=prog_options.index(o_prog["type"]) if o_prog["type"] in prog_options else 0, key=f"ptype_{d_key}_{ex['name']}")
+                    
                     c1, c2, c3, c4 = st.columns(4)
                     g_s = c1.number_input("Sets", 1, 15, int(o_prog.get("glob_sets", 3)), key=f"gs_{d_key}_{ex['name']}")
                     
@@ -101,6 +236,7 @@ with tab_progr:
                         o_prog["min_reps"] = c3.number_input("Min Reps", 1, 100, int(o_prog.get("min_reps", 8)), key=f"minr_{d_key}_{ex['name']}")
                         o_prog["max_reps"] = c4.number_input("Max Reps", 1, 100, int(o_prog.get("max_reps", 12)), key=f"maxr_{d_key}_{ex['name']}")
                     elif p_type == "Expert Mode":
+                        # Expert Mode now uses Double Progression fields as baseline
                         o_prog["start_weight"] = c2.number_input("Start Weight", 0.0, 500.0, float(o_prog.get("start_weight", 20.0)), key=f"sw_{d_key}_{ex['name']}")
                         o_prog["min_reps"] = c3.number_input("Min Reps", 1, 100, int(o_prog.get("min_reps", 8)), key=f"minr_{d_key}_{ex['name']}")
                         o_prog["max_reps"] = c4.number_input("Max Reps", 1, 100, int(o_prog.get("max_reps", 12)), key=f"maxr_{d_key}_{ex['name']}")
@@ -111,17 +247,16 @@ with tab_progr:
                         o_prog["start_reps"] = c2.number_input("Start Reps", 1, 100, int(o_prog.get("start_reps", 8)), key=f"sr_{d_key}_{ex['name']}")
                     elif p_type == "Linear Time":
                         o_prog["start_time"] = c2.number_input("Start Time (sec)", 1, 3600, int(o_prog.get("start_time", 30)), key=f"st_{d_key}_{ex['name']}")
-
+                    
                     st.markdown("---")
                     l1, l2, l3 = st.columns(3)
-
                     if "Time" in p_type:
                         inc_label, inc_step = "Increase time by (sec)", 5.0
                     elif "Reps" in p_type:
                         inc_label, inc_step = "Increase reps by", 1.0
                     else:
                         inc_label, inc_step = "Increase weight by", 0.25
-
+                    
                     o_prog["inc_weight"] = l1.number_input(inc_label, 0.0, 300.0, float(o_prog.get("inc_weight", 1.25)), inc_step, format="%.2f", key=f"iw_{d_key}_{ex['name']}")
                     o_prog["freq_inc"] = l2.number_input("Success weeks for increase", 1, 10, int(o_prog.get("freq_inc", 1)), key=f"fi_{d_key}_{ex['name']}")
                     o_prog["freq_del"] = l3.number_input("Failed weeks for deload", 1, 10, int(o_prog.get("freq_del", 2)), key=f"fd_{d_key}_{ex['name']}")
@@ -129,3 +264,139 @@ with tab_progr:
                     o_prog["type"] = p_type
                     o_prog["glob_sets"] = g_s
                     st.session_state.my_plan[d_key][i]["progression"] = o_prog
+
+# --- TAB 4: PAIN MANAGEMENT ---
+with tab_pain:
+    st.header("Pain Management")
+    st.info("Analytics and insights for your pain thresholds will appear here.")
+
+# --- TAB 5: WARMUPS ---
+with tab_warm:
+    st.header("Warmup Routines")
+
+    # Initialisierung
+    if "warmup_routines" not in st.session_state:
+        st.session_state.warmup_routines = {}
+
+    # Funktion: Neue Routine anlegen mit Standardwerten
+    def add_new_warmup():
+        base_name = "New Warmup"
+        counter = 1
+        name = base_name
+        while name in st.session_state.warmup_routines:
+            counter += 1
+            name = f"{base_name} {counter}"
+
+        st.session_state.warmup_routines[name] = [
+            {"percent": 50, "reps": 10},
+            {"percent": 70, "reps": 5},
+            {"percent": 90, "reps": 2},
+        ]
+
+    if st.button("Add New Warmup Routine"):
+        add_new_warmup()
+        st.rerun()
+
+    st.divider()
+
+    # Routinen verwalten
+    for routine_name in list(st.session_state.warmup_routines.keys()):
+        with st.expander(f"{routine_name}", expanded=True):
+
+            # Umbenennen
+            new_name = st.text_input(
+                "Routine Name",
+                value=routine_name,
+                key=f"rename_{routine_name}"
+            )
+
+            if new_name != routine_name and new_name.strip() != "":
+                st.session_state.warmup_routines[new_name] = st.session_state.warmup_routines.pop(routine_name)
+                st.rerun()
+
+            steps = st.session_state.warmup_routines[new_name]
+
+            st.markdown("### Warmup Sets")
+
+            for i, step in enumerate(steps):
+                c1, c2, c3 = st.columns([2, 2, 1])
+
+                percent = c1.number_input(
+                    "Percent",
+                    min_value=1,
+                    max_value=200,
+                    value=int(step["percent"]),
+                    key=f"percent_{new_name}_{i}"
+                )
+
+                reps = c2.number_input(
+                    "Reps",
+                    min_value=1,
+                    max_value=100,
+                    value=int(step["reps"]),
+                    key=f"reps_{new_name}_{i}"
+                )
+
+                if c3.button("Delete", key=f"del_step_{new_name}_{i}"):
+                    steps.pop(i)
+                    st.rerun()
+
+                step["percent"] = percent
+                step["reps"] = reps
+
+            if st.button("Add Warmup Set", key=f"add_step_{new_name}"):
+                steps.append({"percent": 50, "reps": 5})
+                st.rerun()
+
+            st.divider()
+
+            if st.button("Delete Routine", key=f"delete_{new_name}"):
+                st.session_state.warmup_routines.pop(new_name)
+                st.rerun()
+
+# --- TAB 6: REST TIMER ---
+with tab_rest:
+    st.header("Rest Timer Settings")
+    for d_key, exercises in st.session_state.my_plan.items():
+        for ex in exercises:
+            st.markdown(f"**{ex['name']}**")
+            c1, c2, c3 = st.columns(3)
+            
+            st.session_state.rest_defaults[f"{ex['name']}_sets"] = c1.text_input(
+                "Rest between Sets", 
+                value=st.session_state.rest_defaults.get(f"{ex['name']}_sets", "1:30"), 
+                key=f"res_s_{ex['name']}_{d_key}"
+            )
+            
+            st.session_state.rest_defaults[f"{ex['name']}_warmup"] = c2.text_input(
+                "Rest between Warmup Sets", 
+                value=st.session_state.rest_defaults.get(f"{ex['name']}_warmup", "1:00"), 
+                key=f"res_w_{ex['name']}_{d_key}"
+            )
+            
+            st.session_state.rest_defaults[f"{ex['name']}_dropset"] = c3.text_input(
+                "Rest between Drop Sets", 
+                value=st.session_state.rest_defaults.get(f"{ex['name']}_dropset", "0:30"), 
+                key=f"res_d_{ex['name']}_{d_key}"
+            )
+            st.divider()
+
+# --- TAB 7: DATA ---
+with tab_data:
+    st.header("Data Management")
+    log_data = [{"Key": k, **v} for k, v in st.session_state.training_logs.items() if v.get("done")]
+    if log_data:
+        st.dataframe(pd.DataFrame(log_data), use_container_width=True)
+    else:
+        st.info("No data recorded yet.")
+
+# --- TAB 8: HISTORY ---
+with tab_hist:
+    st.header("History")
+    has_history = any(v.get("done") for v in st.session_state.training_logs.values())
+    if has_history:
+        for k, v in sorted(st.session_state.training_logs.items(), reverse=True):
+            if v.get("done"):
+                st.write(f"**{v['ts']}** - {k.replace('_',' ')}: {v['kg']}kg x {v['r']} (Type: {v['type']})")
+    else:
+        st.info("No history available yet. Complete a set to see it here.")
