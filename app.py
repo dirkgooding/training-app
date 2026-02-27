@@ -262,8 +262,87 @@ with tab_pain:
 
 # --- TAB 5: WARMUPS ---
 with tab_warm:
-    st.header("Warmup Configuration")
-    st.info("Define your warmup routines here (Coming soon).")
+    st.header("Warmup Routines")
+
+    # Initialisierung
+    if "warmup_routines" not in st.session_state:
+        st.session_state.warmup_routines = {}
+
+    # Funktion: Neue Routine anlegen mit Standardwerten
+    def add_new_warmup():
+        base_name = "New Warmup"
+        counter = 1
+        name = base_name
+        while name in st.session_state.warmup_routines:
+            counter += 1
+            name = f"{base_name} {counter}"
+
+        st.session_state.warmup_routines[name] = [
+            {"percent": 50, "reps": 10},
+            {"percent": 70, "reps": 5},
+            {"percent": 90, "reps": 2},
+        ]
+
+    if st.button("Add New Warmup Routine"):
+        add_new_warmup()
+        st.rerun()
+
+    st.divider()
+
+    # Routinen verwalten
+    for routine_name in list(st.session_state.warmup_routines.keys()):
+        with st.expander(f"{routine_name}", expanded=True):
+
+            # Umbenennen
+            new_name = st.text_input(
+                "Routine Name",
+                value=routine_name,
+                key=f"rename_{routine_name}"
+            )
+
+            if new_name != routine_name and new_name.strip() != "":
+                st.session_state.warmup_routines[new_name] = st.session_state.warmup_routines.pop(routine_name)
+                st.rerun()
+
+            steps = st.session_state.warmup_routines[new_name]
+
+            st.markdown("### Warmup Sets")
+
+            for i, step in enumerate(steps):
+                c1, c2, c3 = st.columns([2, 2, 1])
+
+                percent = c1.number_input(
+                    "Percent",
+                    min_value=1,
+                    max_value=200,
+                    value=int(step["percent"]),
+                    key=f"percent_{new_name}_{i}"
+                )
+
+                reps = c2.number_input(
+                    "Reps",
+                    min_value=1,
+                    max_value=100,
+                    value=int(step["reps"]),
+                    key=f"reps_{new_name}_{i}"
+                )
+
+                if c3.button("Delete", key=f"del_step_{new_name}_{i}"):
+                    steps.pop(i)
+                    st.rerun()
+
+                step["percent"] = percent
+                step["reps"] = reps
+
+            if st.button("Add Warmup Set", key=f"add_step_{new_name}"):
+                steps.append({"percent": 50, "reps": 5})
+                st.rerun()
+
+            st.divider()
+
+            if st.button("Delete Routine", key=f"delete_{new_name}"):
+                st.session_state.warmup_routines.pop(new_name)
+                st.rerun()
 
 # --- TAB 6: REST TIMER ---
 with tab_rest:
